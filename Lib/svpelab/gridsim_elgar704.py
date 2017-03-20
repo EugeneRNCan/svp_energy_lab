@@ -2,6 +2,7 @@
 import os
 import grid_profiles
 import gridsim
+import wavegen
 
 elgar_info = {'name': os.path.splitext(os.path.basename(__file__))[0],
               'mode': 'Elgar704'
@@ -27,7 +28,7 @@ def params(info, group_name):
     info.param(pname('comm'), label='Communications Interface', default='VISA',values=['GPIB','VISA'])
     info.param(pname('gpib_device'), label='GPIB address', active=pname('comm'), active_value=['GPIB'], default='GPIB0::17::INSTR')
     info.param(pname('visa_device'), label='VISA address', active=pname('comm'),active_value=['VISA'], default='GPIB0::17::INSTR')
-
+    wavegen.params(info, group_name=group_name, active=gname('mode'), active_value=mode)
 
 GROUP_NAME = 'elgar'
 
@@ -67,6 +68,7 @@ class GridSim(gridsim.GridSim):
         self.visa_device = self._param_value('visa_device')
         self.cmd_str = ''
         self.cmd_str = ''
+        self.wg = wavegen.wavegen_init(ts, group_name=group_name)
         self._cmd = None
         self._query = None
         # open communications, not the relay  and stop profile
