@@ -50,24 +50,17 @@ def params(info, group_name):
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,
                      active=gname('mode'),  active_value=mode, glob=True)
-    info.param(pname('comm'), label='Communications Interface', default='Network', values=['Network'])
-    info.param(pname('ip_addr'), label='IP Address',
-               active=pname('comm'),  active_value=['Network'], default='192.168.0.10')
+    info.param(pname('visa_address'), label='VISA address', active=pname('comm'), active_value=['VISA'],default='GPIB0::10::INSTR')
+    info.param(pname('ip_addr'), label='IP Address',active=pname('comm'),  active_value=['Network'], default='192.168.0.10')
     info.param(pname('sample_interval'), label='Sample Interval (ms)', default=1000)
-
     info.param(pname('chan_1'), label='Channel 1', default='AC', values=['AC', 'DC', 'Unused'])
     info.param(pname('chan_2'), label='Channel 2', default='AC', values=['AC', 'DC', 'Unused'])
     info.param(pname('chan_3'), label='Channel 3', default='AC', values=['AC', 'DC', 'Unused'])
     info.param(pname('chan_4'), label='Channel 4', default='DC', values=['AC', 'DC', 'Unused'])
-    
-    info.param(pname('chan_1_label'), label='Channel 1 Label', default='1', active=pname('chan_1'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_2_label'), label='Channel 2 Label', default='2', active=pname('chan_2'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_3_label'), label='Channel 3 Label', default='3', active=pname('chan_3'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_4_label'), label='Channel 4 Label', default='', active=pname('chan_4'),
-               active_value=['AC', 'DC'])
+    info.param(pname('chan_1_label'), label='Channel 1 Label', default='1', active=pname('chan_1'),active_value=['AC', 'DC'])
+    info.param(pname('chan_2_label'), label='Channel 2 Label', default='2', active=pname('chan_2'),active_value=['AC', 'DC'])
+    info.param(pname('chan_3_label'), label='Channel 3 Label', default='3', active=pname('chan_3'),active_value=['AC', 'DC'])
+    info.param(pname('chan_4_label'), label='Channel 4 Label', default='', active=pname('chan_4'),active_value=['AC', 'DC'])
 
     '''
     info.param(pname('wiring_system'), label='Wiring System', default='1P2W', values=['1P2W', '1P3W', '3P3W',
@@ -90,7 +83,7 @@ class DAS(das.DAS):
     def __init__(self, ts, group_name, points=None):
         das.DAS.__init__(self, ts, group_name, points=points)
         self.sample_interval = self._param_value('sample_interval')
-
+        self.params['comm'] = self._param_value('comm')
         self.params['ip_addr'] = self._param_value('ip_addr')
         self.params['ipport'] = self._param_value('ip_port')
         self.params['timeout'] = self._param_value('ip_timeout')

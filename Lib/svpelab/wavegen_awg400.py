@@ -49,7 +49,7 @@ def params(info, group_name):
     mode = awg400_info['mode']
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,active=gname('mode'),  active_value=mode, glob=True)
-    info.param(pname('comm'), label='Communications Interface', default='VISA', values=['Network','VISA', 'GPIB'])
+    info.param(pname('comm'), label='Communications Interface', default='VISA', values=['Network','VISA'])
 
     info.param(pname('visa_address'), label='VISA address', active=pname('comm'), active_value=['VISA'],default='GPIB0::10::INSTR')
 
