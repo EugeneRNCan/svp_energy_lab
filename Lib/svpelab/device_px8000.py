@@ -124,34 +124,74 @@ class Device(object):
         # print self.query_str
         # print self.query_info
 
-        self.vx = vxi11.Instrument(self.params['ip_addr'])
+
 
     def open(self):
+        try:
+            if self.params['comm'] == 'Network':
+                try:
+                    self.vx = vxi11.Instrument(self.params['ip_addr'])
+                except Exception, e:
+                    raise DeviceError('PX8000 communication error: %s' % str(e))
+            elif self.params['comm'] == 'VISA':
+                try:
+                    # sys.path.append(os.path.normpath(self.visa_path))
+                    import visa
+                    self.rm = visa.ResourceManager()
+                    self.conn = self.rm.open_resource(self.params['visa_address'])
+
+                except Exception, e:
+                    raise DeviceError('PX8000 communication error: %s' % str(e))
+
+            else:
+                raise ValueError('Unknown communication type %s. Use GPIB or VISA' % self.params['comm'])
+
+        except Exception, e:
+            raise DeviceError(str(e))
+
         pass
 
     def close(self):
-        if self.vx is not None:
-            self.vx.close()
-            self.vx = None
+        if self.params['comm'] == 'Network':
+            if self.vx is not None:
+                self.vx.close()
+                self.vx = None
+        elif self.params['comm'] == 'VISA':
+            try:
+                if self.rm is not None:
+                    if self.conn is not None:
+                        self.conn.close()
+                    self.rm.close()
+            except Exception, e:
+                raise DeviceError('PX8000 communication error: %s' % str(e))
+        else:
+            raise ValueError('Unknown communication type %s. Use Serial, GPIB or VISA' % self.params['comm'])
 
     def cmd(self, cmd_str):
-        try:
-            self.vx.write(cmd_str)
-            '''
-            resp = self._query('SYSTem:ERRor?\r')
+        if self.params['comm'] == 'Network':
+            try:
+                self.vx.write(cmd_str)
+            except Exception, e:
+                raise DeviceError('PX8000 communication error: %s' % str(e))
 
-            if len(resp) > 0:
-                if resp[0] != '0':
-                    raise das.DASError(resp)
-            '''
+        elif self.params['comm'] == 'VISA':
+            try:
+                self.conn.write(cmd_str)
+            except Exception, e:
+                raise DeviceError('PX8000 communication error: %s' % str(e))
+
         except Exception, e:
             raise DeviceError('PX8000 communication error: %s' % str(e))
 
     def query(self, cmd_str):
-        try:
-            resp = self.vx.ask(cmd_str)
-        except Exception, e:
-            raise DeviceError('PX8000 communication error: %s' % str(e))
+        if self.params['comm'] == 'Network':
+            try:
+                resp = self.vx.ask(cmd_str)
+            except Exception, e:
+                raise DeviceError('PX8000 communication error: %s' % str(e))
+        elif self.params['comm'] == 'VISA':
+            self.cmd(cmd_str)
+            resp = self.conn.read()
 
         return resp
 

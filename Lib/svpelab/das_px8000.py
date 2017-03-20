@@ -50,6 +50,7 @@ def params(info, group_name):
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,
                      active=gname('mode'),  active_value=mode, glob=True)
+    info.param(pname('comm'), label='Communications Interface', default='Network', values=['Network','VISA'])
     info.param(pname('visa_address'), label='VISA address', active=pname('comm'), active_value=['VISA'],default='GPIB0::10::INSTR')
     info.param(pname('ip_addr'), label='IP Address',active=pname('comm'),  active_value=['Network'], default='192.168.0.10')
     info.param(pname('sample_interval'), label='Sample Interval (ms)', default=1000)
