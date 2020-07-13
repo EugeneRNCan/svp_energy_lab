@@ -33,8 +33,8 @@ Questions can be directed to support@sunspec.org
 """
 
 import os
-import device_das_sandia_ni_pcie
-import das
+from . import device_das_sandia_ni_pcie
+from . import das
 
 ni_info = {
     'name': os.path.splitext(os.path.basename(__file__))[0],
@@ -62,18 +62,20 @@ GROUP_NAME = 'sandia_ni_pcie'
 
 class DAS(das.DAS):
 
-    def __init__(self, ts, group_name, points=None):
-        das.DAS.__init__(self, ts, group_name, points=points)
+    def __init__(self, ts, group_name, points=None, sc_points=None):
+        das.DAS.__init__(self, ts, group_name, points=points, sc_points=sc_points)
         self.sample_interval = self._param_value('sample_interval')
-
         self.params['node'] = self._param_value('node')
+        self.params['sample_interval'] = self._param_value('sample_interval')
         self.params['sample_rate'] = self._param_value('sample_rate')
         self.params['n_cycles'] = self._param_value('n_cycles')
+        self.params['ts'] = ts
 
         self.device = device_das_sandia_ni_pcie.Device(self.params, ts)
+        self.data_points = self.device.data_points
 
-        if self.sample_interval < 50:
-            raise das.DASError('Parameter error: sample interval must be at least 50 ms')
+        # initialize soft channel points
+        self._init_sc_points()
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)

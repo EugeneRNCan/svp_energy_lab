@@ -31,10 +31,8 @@ Questions can be directed to support@sunspec.org
 """
 
 import os
-
-import device_das_sim
-import das
-
+from . import device_das_sim
+from . import das
 import script
 
 sim_info = {
@@ -51,36 +49,36 @@ def params(info, group_name=None):
     mode = sim_info['mode']
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,
-                     active=gname('mode'),  active_value=mode, glob=True)
-    info.param(pname('data_file'), label='Data File', default='data.csv', ptype=script.PTYPE_FILE)
-    info.param(pname('sample_interval'), label='Sample Interval (ms)', default=1000)
-
-    info.param(pname('chan_1'), label='Channel 1', default='AC', values=['AC', 'DC', 'Unused'])
-    info.param(pname('chan_2'), label='Channel 2', default='AC', values=['AC', 'DC', 'Unused'])
-    info.param(pname('chan_3'), label='Channel 3', default='AC', values=['AC', 'DC', 'Unused'])
-    info.param(pname('chan_4'), label='Channel 4', default='DC', values=['AC', 'DC', 'Unused'])
-
-    info.param(pname('chan_1_label'), label='Channel 1 Label', default='1', active=pname('chan_1'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_2_label'), label='Channel 2 Label', default='2', active=pname('chan_2'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_3_label'), label='Channel 3 Label', default='3', active=pname('chan_3'),
-               active_value=['AC', 'DC'])
-    info.param(pname('chan_4_label'), label='Channel 4 Label', default='', active=pname('chan_4'),
-               active_value=['AC', 'DC'])
+                     active=gname('mode'),  active_value=mode)
+    info.param(pname('data_file'), label='Data File (in SVP Files directory)', default='data.csv')
+    info.param(pname('use_timestamp'), label='Use Data File Timestamp', default='Enabled', values=['Enabled',
+                                                                                                   'Disabled'])
+    info.param(pname('at_end'), label='At End of Data', default='Repeat last record', values=['Loop to start',
+                                                                                              'Repeat last record',
+                                                                                              'Return an error'])
 
 GROUP_NAME = 'sim'
 
 
 class DAS(das.DAS):
-    def __init__(self, ts, group_name, points=None):
-        das.DAS.__init__(self, ts, group_name, points=points)
-        self.device = device_das_sim.Device()
-        self.data_file = self._param_value('data_file')
-        self.sample_interval = self._param_value('sample_interval')
+    def __init__(self, ts, group_name, points=None, sc_points=None):
+        das.DAS.__init__(self, ts, group_name, points=points, sc_points=sc_points)
+        data_file = self._param_value('data_file')
+        if data_file and data_file != 'None':
+            data_file = os.path.join(self.files_dir, data_file)
+        self.params['points'] = self.points
+        self.params['data_file'] = data_file
+        self.params['use_timestamp'] = self._param_value('use_timestamp')
+        self.params['at_end'] = self._param_value('at_end')
+        self.params['ts'] = self.ts
 
-        if self.sample_interval < 50:
-            raise das.DASError('Parameter error: sample interval must be at least 50 ms')
+        self.ts.log('results_dir = %s' % (ts._results_dir))
+
+        self.device = device_das_sim.Device(self.params)
+        self.data_points = self.device.data_points
+
+        # initialize soft channel points
+        self._init_sc_points()
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)

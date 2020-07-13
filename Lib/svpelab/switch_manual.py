@@ -31,8 +31,8 @@ Questions can be directed to support@sunspec.org
 """
 
 import os
-import switch
-import device_switch_manual
+from . import switch
+from . import device_switch_manual
 
 manual_info = {
     'name': os.path.splitext(os.path.basename(__file__))[0],
@@ -55,8 +55,8 @@ GROUP_NAME = 'manual'
 
 class Switch(switch.Switch):
 
-    def __init__(self, ts, group_name):
-        switch.Switch.__init__(self, ts, group_name)
+    def __init__(self, ts, group_name, support_interfaces=None):
+        switch.Switch.__init__(self, ts, group_name, support_interfaces=support_interfaces)
         self.device = device_switch_manual.Device()
         self.name = self._param_value('name')
 

@@ -33,7 +33,7 @@ Questions can be directed to support@sunspec.org
 class Device(object):
 
     def __init__(self, params=None):
-        pass
+        self.params = params
 
     def info(self):
         return 'Waveform Generator Manual - 1.0'
@@ -42,4 +42,34 @@ class Device(object):
         pass
 
     def close(self):
+        pass
+
+    def start(self):
+        """
+        Start sequence execution
+        :return:
+        """
+        pass
+
+    def stop(self):
+        """
+        Start sequence execution
+        :return:
+        """
+        pass
+
+    def chan_enable(self, chans):
+        """
+        Enable channels
+        :param chans: list of channels to enable
+        :return:
+        """
+        pass
+
+    def chan_disable(self, chans):
+        """
+        Disable channels
+        :param chans: list of channels to disable
+        :return:
+        """
         pass

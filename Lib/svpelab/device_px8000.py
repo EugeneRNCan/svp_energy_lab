@@ -32,7 +32,7 @@ Questions can be directed to support@sunspec.org
 
 import time
 
-import vxi11
+from . import vxi11
 
 '''
 data_query_str = (
@@ -68,17 +68,40 @@ data_query_str = (
 
 # map data points to query points
 query_points = {
-    'ac_voltage': 'URMS',
-    'ac_current': 'IRMS',
-    'ac_watts': 'P',
-    'ac_va': 'S',
-    'ac_vars': 'Q',
-    'ac_pf': 'LAMBDA',
-    'ac_freq': 'FU',
-    'dc_voltage': 'UDC',
-    'dc_current': 'IDC',
-    'dc_watts': 'P'
+    'AC_VRMS': 'URMS',
+    'AC_IRMS': 'IRMS',
+    'AC_P': 'P',
+    'AC_S': 'S',
+    'AC_Q': 'Q',
+    'AC_PF': 'LAMBDA',
+    'AC_FREQ': 'FU',
+    'DC_V': 'UDC',
+    'DC_I': 'IDC',
+    'DC_P': 'P'
 }
+
+
+def pf_scan(points, pf_points):
+    for i in range(len(points)):
+        if points[i].startswith('AC_PF'):
+            label = points[i][5:]
+            try:
+                p_index = points.index('AC_P%s' % (label))
+                q_index = points.index('AC_Q%s' % (label))
+                pf_points.append((i, p_index, q_index))
+            except ValueError:
+                pass
+
+def pf_adjust_sign(data, pf_idx, p_idx, q_idx):
+    """
+    Power factor sign is the opposite sign of the product of active power and reactive power
+    """
+    pq = data[p_idx] * data[q_idx]
+    # sign should be opposite of product of p and q
+    pf = abs(data[pf_idx])
+    if pq >= 0:
+        pf = pf * -1
+    return pf
 
 
 class DeviceError(Exception):
@@ -87,44 +110,48 @@ class DeviceError(Exception):
     """
     pass
 
+
 class Device(object):
 
     def __init__(self, params):
         self.vx = None
         self.params = params
         self.channels = params.get('channels')
-        self.query_info = []
+        self.data_points = ['TIME']
+        self.pf_points = []
 
         # create query string for configured channels
         query_chan_str = ''
         item = 0
         for i in range(1,5):
-            query_info = None
             chan = self.channels[i]
             if chan is not None:
                 chan_type = chan.get('type')
                 points = chan.get('points')
-                chan_label = chan.get('label')
-                if chan_type is None:
-                    raise DeviceError('No channel type specified')
-                if points is None:
-                    raise DeviceError('No points specified')
-                chan_str = chan_type
-                if chan_label:
-                    chan_str += '_%s' % (chan_label)
-                query_info = (chan_str, item, item + len(points))
-                for p in points:
-                    item += 1
-                    chan_str = query_points.get('%s_%s' % (chan_type, p))
-                    query_chan_str += ':NUMERIC:NORMAL:ITEM%d %s,%d;' % (item, chan_str, i)
-                self.query_info.append(query_info)
+                if points is not None:
+                    chan_label = chan.get('label')
+                    if chan_type is None:
+                        raise DeviceError('No channel type specified')
+                    if points is None:
+                        raise DeviceError('No points specified')
+                    for p in points:
+                        item += 1
+                        point_str = '%s_%s' % (chan_type, p)
+                        chan_str = query_points.get(point_str)
+                        query_chan_str += ':NUMERIC:NORMAL:ITEM%d %s,%d;' % (item, chan_str, i)
+                        if chan_label:
+                            point_str = '%s_%s' % (point_str, chan_label)
+                        self.data_points.append(point_str)
         query_chan_str += '\n:NUMERIC:NORMAL:VALUE?'
 
         self.query_str = ':NUMERIC:FORMAT ASCII\nNUMERIC:NORMAL:NUMBER %d\n' % (item) + query_chan_str
-        # print self.query_str
-        # print self.query_info
+
+        pf_scan(self.data_points, self.pf_points)
 
         self.vx = vxi11.Instrument(self.params['ip_addr'])
+
+        # clear any error conditions
+        self.cmd('*CLS')
 
     def open(self):
         pass
@@ -137,20 +164,18 @@ class Device(object):
     def cmd(self, cmd_str):
         try:
             self.vx.write(cmd_str)
-            '''
-            resp = self._query('SYSTem:ERRor?\r')
+            resp = self.query('STAT:ERRor?')
 
             if len(resp) > 0:
                 if resp[0] != '0':
-                    raise das.DASError(resp)
-            '''
-        except Exception, e:
+                    raise DeviceError(resp)
+        except Exception as e:
             raise DeviceError('PX8000 communication error: %s' % str(e))
 
     def query(self, cmd_str):
         try:
             resp = self.vx.ask(cmd_str)
-        except Exception, e:
+        except Exception as e:
             raise DeviceError('PX8000 communication error: %s' % str(e))
 
         return resp
@@ -158,15 +183,184 @@ class Device(object):
     def info(self):
         return self.query('*IDN?')
 
-    def data_read(self):
-        rec = {'time': time.time()}
-        data = [float(i) for i in self.query(self.query_str).split(',')]
-        # extract points for each channel
-        for info in self.query_info:
-            rec[info[0]] = tuple(data[info[1]:info[2]])
+    def data_capture(self, enable=True):
+        self.capture(enable)
 
-        return rec
+    def data_read(self):
+        q = self.query(self.query_str)
+        data = [float(i) for i in q.split(',')]
+        data.insert(0, time.time())
+        for p in self.pf_points:
+            data[p[0]] = pf_adjust_sign(data, *p)
+        return data
+
+    def capture(self, enable=None):
+        """
+        Enable/disable capture.
+        """
+        if enable is not None:
+            if enable is True:
+                self.cmd('STAR')
+            else:
+                self.cmd('STOP')
+
+    def trigger(self, value=None):
+        """
+        Create trigger event with provided value.
+        """
+        pass
+
+    COND_RUN = 0x1000
+    COND_TRG = 0x0004
+    COND_CAP = 0x0001
+
+    def status(self):
+        """
+        Returns dict with following entries:
+            'trigger_wait' - waiting for trigger - True/False
+            'capturing' - waveform capture is active - True/False
+        """
+        cond = int(d.query('STAT:COND?'))
+        result = {'trigger_wait': (cond & COND_TRG),
+                  'capturing': (cond & COND_CAP),
+                  'cond': cond}
+        return result
+
+    def waveform(self):
+        """
+        Return waveform (Waveform) created from last waveform capture.
+        """
+        pass
+
+    def trigger_config(self, params):
+        """
+        slope - (rise, fall, both)
+        level - (V, I, P)
+        chan - (chan num)
+        action - (memory save)
+        position - (trigger % in capture)
+        """
+
+        """
+        samples/sec
+        secs pre/post
+
+        rise/fall
+        level (V, A)
+        """
+
+        pass
 
 if __name__ == "__main__":
 
-    pass
+    import time
+    import ftplib
+
+    COND_RUN = 0x1000
+    COND_TRG = 0x0004
+    COND_CAP = 0x0001
+
+    COND_RUNNING = (COND_RUN | COND_CAP)
+
+    params = {}
+    params['ip_addr'] = '192.168.0.100'
+    params['channels'] = [None, None, None, None, None]
+
+    ftp = ftplib.FTP('192.168.0.100')
+    ftp.login()
+    ftp.cwd('SD-1')
+    try:
+        ftp.delete('SVP_WAVEFORM.CSV')
+    except:
+        pass
+
+    points_default = {
+        'AC': ('VRMS', 'IRMS', 'P', 'S', 'Q', 'PF', 'FREQ'),
+        'DC': ('V', 'I', 'P')
+    }
+    points = dict(points_default)
+
+    channels = [None]
+    for i in range(1, 5):
+        chan_type = self._param_value('chan_%d' % (i))
+        chan_label = self._param_value('chan_%d_label' % (i))
+        if chan_label == 'None':
+            chan_label = ''
+        chan = {'type': chan_type, 'points': self.points.get(chan_type), 'label': chan_label}
+        channels.append(chan)
+
+    d = Device(params=params)
+    print(d.info())
+
+    # initialize temp directory
+    d.cmd('FILE:DRIV SD')
+    path = d.query('FILE:PATH?')
+    if path != ':FILE:PATH "Path = SD"':
+        print('Drive not found: %s' % 'SD')
+    try:
+        d.cmd('FILE:DEL "SVP_WAVEFORM";*WAI')
+        print('deleted SVP temp directory')
+    except:
+        pass
+    '''
+    print path
+    if path == ':FILE:PATH "Path = SD/SVPTEMP"':
+        d.cmd('FILE:DRIV SD')
+        try:
+            d.cmd('FILE:DEL "SVPTEMP";*WAI')
+        except:
+            pass
+        print 'deleted SVP temp directory'
+    d.cmd('FILE:MDIR "SVPTEMP";*WAI')
+    d.cmd('FILE:CDIR "SVPTEMP"')
+    path = d.query('FILE:PATH?')
+    if path != ':FILE:PATH "Path = SD/SVPTEMP"':
+        print 'Error creating SVP temp directory: %s' % path
+    '''
+
+    # capture waveform
+    # POS 50?
+    d.cmd('TRIG:MODE SING;HYST LOW;LEV 6.00000E-03;SLOP FALL;SOUR P2')
+    print(d.query('TRIG:MODE?'))
+    print(d.query('TRIG:SIMP?'))
+    print(d.query('ACQ?'))
+    d.cmd('ACQ:CLOC INT; COUN INF; MODE NORM; RLEN 250000')
+    print(d.query('ACQ?'))
+    d.cmd('TIM:SOUR INT; TDIV 500.0E-03')
+    print(d.query('TIM?'))
+    d.cmd(':STAR')
+    running = True
+    while running:
+        cond = int(d.query('STAT:COND?'))
+        if cond & COND_RUNNING == COND_RUNNING:
+            print('still waiting (%s) ...\r' % cond, end=' ')
+            time.sleep(1)
+        else:
+            running = False
+            d.cmd(':STOP')
+
+    # save waveform
+    d.cmd('FILE:SAVE:ANAM OFF;NAME "svp_waveform"')
+    print('saving')
+    d.cmd('FILE:SAVE:ASC:EXEC')
+
+    # transfer waveform
+
+    '''
+    print d.query('waveform:length?')
+    print d.query('waveform:format?')
+    print d.query('waveform:trigger?')
+    print d.query('WAV:FORM?')
+    print d.query('WAV:SRAT?')
+    print d.query('status:condition?')
+    d.cmd('FILE:DRIV USB,0')
+    d.cmd('FILE:CDIR "SVPWAV"')
+    d.cmd('FILE:DEL "SVPWAV"')
+    print d.query('FILE:PATH?')
+    d.cmd('FILE:DRIV USB,0')
+    print d.query('FILE:PATH?')
+    d.cmd('FILE:DEL "SVPWAV"')
+    '''
+    # d.cmd('FILE:MDIR "SVPWAV"')
+
+
