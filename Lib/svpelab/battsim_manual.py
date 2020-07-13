@@ -56,8 +56,8 @@ GROUP_NAME = 'manual'
 
 class BattSim(battsim.BattSim):
 
-    def __init__(self, ts, group_name):
-        battsim.BattSim.__init__(self, ts, group_name)
+    def __init__(self, ts, group_name, support_interfaces=None):
+        battsim.BattSim.__init__(self, ts, group_name, support_interfaces=support_interfaces)
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)

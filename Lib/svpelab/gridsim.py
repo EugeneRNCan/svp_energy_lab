@@ -121,17 +121,19 @@ class GridSim(object):
         self.auto_config = self._group_param_value('auto_config')
 
         # optional interfaces to other SVP abstraction layers/device drivers
-        if support_interfaces.get('pvsim') is not None:
-            self.dc_measurement_device = support_interfaces.get('pvsim')
-        elif support_interfaces.get('dcsim') is not None:
-            self.dc_measurement_device = support_interfaces.get('dcsim')
-        else:
-            self.dc_measurement_device = None
-        if support_interfaces.get('hil') is not None:
-            self.hil = support_interfaces.get('hil')
-            # ts.log_debug('self.hil: %s' % self.hil)
-        else:
-            self.hil = None
+        mode = ts.param_value(group_name + '.' + 'mode')
+        if mode != 'Manual':
+            if support_interfaces.get('pvsim') is not None:
+                self.dc_measurement_device = support_interfaces.get('pvsim')
+            elif support_interfaces.get('dcsim') is not None:
+                self.dc_measurement_device = support_interfaces.get('dcsim')
+            else:
+                self.dc_measurement_device = None
+            if support_interfaces.get('hil') is not None:
+                self.hil = support_interfaces.get('hil')
+                # ts.log_debug('self.hil: %s' % self.hil)
+            else:
+                self.hil = None
 
     def _group_param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + name)

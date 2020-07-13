@@ -55,8 +55,8 @@ GROUP_NAME = 'manual'
 
 class Switch(switch.Switch):
 
-    def __init__(self, ts, group_name):
-        switch.Switch.__init__(self, ts, group_name)
+    def __init__(self, ts, group_name, support_interfaces=None):
+        switch.Switch.__init__(self, ts, group_name, support_interfaces=support_interfaces)
         self.device = device_switch_manual.Device()
         self.name = self._param_value('name')
 
