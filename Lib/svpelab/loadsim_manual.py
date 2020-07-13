@@ -58,8 +58,8 @@ class LoadSim(loadsim.LoadSim):
     independent RLC load classes can be created containing the methods contained in this class.
     """
 
-    def __init__(self, ts, group_name, support_interfaces=None):
-        loadsim.LoadSim.__init__(self, ts, group_name, support_interfaces=support_interfaces)
+    def __init__(self, ts, group_name):
+        loadsim.LoadSim.__init__(self, ts, group_name)
 
     def resistance(self, r=None):
         if r is not None:
