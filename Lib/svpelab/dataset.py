@@ -58,7 +58,7 @@ class DatasetError(Exception):
     A dataset consists of a set of time series points organized as parallel arrays and some
     additional optional properties.
 
-    Optional roperties:
+    Optional properties:
     Start time of dataset
     Sample rate of dataset (samples/sec)
     Trigger sample (record index into dataset)
@@ -88,18 +88,21 @@ class Dataset(object):
 
     def append(self, data):
         dlen = len(data)
+        # self.ts.log_debug('self.data=%s, data=%s' % (self.data, data))
         if len(data) != len(self.data):
             raise DatasetError('Append record point mismatch, dataset contains %s points,'
                                ' appended data contains %s points' % (len(self.data), dlen))
         for i in range(dlen):
             try:
                 if data[i] is not None:
-                    print(type(data[i]))
                     if data[i] is tuple:
                         self.ts.log_debug('tuple data point recorded: %s' % data)
                         v = float(data[i][0])
                     elif isinstance(data[i], datetime.datetime):
-                        v = data[i]
+                        epoch = datetime.datetime.utcfromtimestamp(0)
+                        total_seconds = (data[i] - epoch).total_seconds()
+                        # total_seconds will be in decimals (millisecond precision)
+                        v = total_seconds
                     else:
                         v = float(data[i])
                 else:
@@ -122,11 +125,11 @@ class Dataset(object):
             self.data.append([])
 
     def to_csv(self, filename):
-        cols = range(len(self.data))
+        cols = list(range(len(self.data)))
         if len(cols) > 0:
             f = open(filename, 'w')
             f.write('%s\n' % ', '.join(map(str, self.points)))
-            for i in xrange(len(self.data[0])):
+            for i in range(len(self.data[0])):
                 d = []
                 for j in cols:
                     # self.ts.log_debug('data = %s' % self.data)

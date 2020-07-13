@@ -32,8 +32,8 @@ Questions can be directed to support@sunspec.org
 
 import os
 
-import wavegen
-import gridsim
+from . import wavegen
+from . import gridsim
 
 manual_info = {
     'name': os.path.splitext(os.path.basename(__file__))[0],
@@ -68,8 +68,8 @@ GROUP_NAME = 'manual'
 
 class GridSim(gridsim.GridSim):
 
-    def __init__(self, ts, group_name, params=None):
-        gridsim.GridSim.__init__(self, ts, group_name, params)
+    def __init__(self, ts, group_name, params=None, support_interfaces=None):
+        gridsim.GridSim.__init__(self, ts, group_name, params, support_interfaces=support_interfaces)
 
         if ts.confirm('Please run the grid simulator profile.') is False:
             raise gridsim.GridSimError('Aborted grid simulation')

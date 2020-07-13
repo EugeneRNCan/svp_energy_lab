@@ -31,40 +31,51 @@ Questions can be directed to support@sunspec.org
 """
 
 import os
-import hil
+from . import hil
 
 try:
     import typhoon
     import typhoon.api.hil as cp  # control panel
     from typhoon.api.schematic_editor import model
     import typhoon.api.pv_generator as pv
-except Exception, e:
-    print('Typhoon HIL API not installed. %s' % e)
-    raise e
+except Exception as e:
+    print(('Typhoon HIL API not installed. %s' % e))
 
 typhoon_info = {
     'name': os.path.splitext(os.path.basename(__file__))[0],
     'mode': 'Typhoon'
 }
 
+
 def hil_info():
     return typhoon_info
 
-def params(info):
-    info.param_add_value('hil.mode', typhoon_info['mode'])
-    info.param_group('hil.typhoon', label='Typhoon Parameters',
-                     active='hil.mode',  active_value=['Typhoon'], glob=True)
-    info.param('hil.typhoon.auto_config', label='Configure HIL at beginning of test', default='Disabled',
-               values=['Enabled', 'Disabled'])
-    info.param('hil.typhoon.eut_nominal_voltage', label='EUT nameplate voltage (V)', default=230.0)
-    info.param('hil.typhoon.eut_nominal_frequency', label='EUT nominal frequency (Hz)', default=50.0)
 
-    info.param('hil.typhoon.model_name', label='Model file name (.tse)', default=r"ASGC_Closed_loop_full_model.tse")
-    info.param('hil.typhoon.setting_name', label='Settings file name (.runx)', default=r"ASGC_full_settings.runx")
-    info.param('hil.typhoon.hil_working_dir', label='Absolute path of working directory where the .tse and the .runx are located',
+def params(info, group_name=None):
+    gname = lambda name: group_name + '.' + name
+    pname = lambda name: group_name + '.' + GROUP_NAME + '.' + name
+    mode = typhoon_info['mode']
+
+    info.param_add_value('hil.mode', typhoon_info['mode'])
+    info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode, active=gname('mode'),
+                     active_value=mode, glob=True)
+    info.param(pname('auto_config'), label='Configure HIL at beginning of test', default='Disabled',
+               values=['Enabled', 'Disabled'])
+    info.param(pname('eut_nominal_voltage'), label='EUT nameplate voltage (V)', default=230.0)
+    info.param(pname('eut_nominal_frequency'), label='EUT nominal frequency (Hz)', default=50.0)
+
+    info.param(pname('model_name'), label='Model file name (.tse)',
+               default=r"ASGC_Closed_loop_full_model.tse")
+    info.param(pname('setting_name'), label='Settings file name (.runx)',
+               default=r"ASGC_full_settings.runx")
+    info.param(pname('hil_working_dir'),
+               label='Absolute path of working directory where the .tse and the .runx are located',
                default=r"c:/Users/Public/TyphoonHIL/ModelA")
 
     info.param('hil.typhoon.debug', label='Debug level of HIL API', default=0)
+
+
+GROUP_NAME = 'typhoon'
 
 
 class HIL(hil.HIL):
@@ -215,10 +226,10 @@ class HIL(hil.HIL):
             cp.set_pv_amb_params("PV1", illumination=995.)
             self.ts.sleep(1)
             cp.set_pv_amb_params("PV1", illumination=1000.)
-        except Exception, e:
+        except Exception as e:
             self.ts.log('Attempted to perturb PV1 irradiance to get inverter to start. This failed. %s' % e)
         for i in range(1, sleeptime):
-            print ("Waiting another %d seconds until the inverter starts." % (sleeptime-i))
+            print(("Waiting another %d seconds until the inverter starts." % (sleeptime-i)))
             self.ts.sleep(1)
 
     def load_schematic(self):
@@ -334,14 +345,14 @@ if __name__ == "__main__":
 
     class ts(object):
         def param_value(self, v):
-            if v == "hil.typhoon.hil_working_dir": return u'C:\\Users\\AblingerR\\Documents\\AITProjects\\EPRI\\Anti-Islanding'
+            if v == "hil.typhoon.hil_working_dir": return 'C:\\Users\\AblingerR\\Documents\\AITProjects\\EPRI\\Anti-Islanding'
             if v == "hil.typhoon.model_name": return 'ASGC_TestSuite_AI_V6_3_YtoMP_EPRI_60Hz_50p'
             if v == "hil.typhoon.hil.typhoon.setting_name": return 'ASGC_TestSuite_AI_full_settings_HIL402'
 
             return v
 
         def log(self, e):
-            print ("{}".format(e))
+            print(("{}".format(e)))
 
         def log_debug(self, e):
             self.log("DEBUG: {}".format(e))

@@ -47,7 +47,7 @@ def params(info, id=None, label='PV Simulator', group_name=None, active=None, ac
     name = lambda name: group_name + '.' + name
     info.param_group(group_name, label='%s Parameters' % label, active=active, active_value=active_value, glob=True)
     info.param(name('mode'), label='Mode', default='Disabled', values=['Disabled'])
-    for mode, m in pvsim_modules.iteritems():
+    for mode, m in pvsim_modules.items():
         m.params(info, group_name=group_name)
 
 PVSIM_DEFAULT_ID = 'pvsim'
@@ -86,30 +86,77 @@ class PVSim(object):
     def __init__(self, ts, group_name, params=None):
         self.ts = ts
         self.group_name = group_name
+        self.params = params
 
     def close(self):
+        """
+        Close the communication connection to the PVSim
+
+        :return: None
+        """
         pass
 
     def info(self):
+        """
+        Get the type of PVSim.  Typically this is done with a *IDN? command.
+
+        :return: string of the information from the device
+        """
         pass
 
     def irradiance_set(self, irradiance=1000):
+        """
+        Set irradiance level for the PVSim channels (individual power supplies that produce the I-V curves)
+
+        :return: None
+        """
         pass
 
     def iv_curve_config(self, pmp, vmp):
+        """
+        Configure the I-V curves on the channels (individual power supplies that produce the I-V curves)
+
+        Typically this is done using the EN50530 standard.  Pointwise EN50530 curves can be created using
+        pv_curve_generation.py if the PV simulator cannot generate the EN50530 curve directly
+
+        :param pmp: Maximum Power Point (MPP) Power in watts
+        :param vmp: Maximum Power Point (MPP) Voltage in volts
+        :return: None
+        """
         pass
 
     def power_set(self, power):
+        """
+        Set the maximum power of the I-V curve by adjusting the irradiance on the PVSim channels (or some other means)
+
+        :param power: maximum power in watts
+        :return: None
+        """
         pass
 
     def profile_load(self, profile_name):
-        # use pv_profiles.py to create profile
+        """
+        Rarely used function to load an irradiance vs time profile
+
+        :param profile_name: a string with the pv_profiles.py profile that is being used for the irradiance vs time
+        :return: None
+        """
         pass
 
     def power_on(self):
+        """
+        Energizes the output of the PVSimulator
+
+        :return: None
+        """
         pass
 
     def profile_start(self):
+        """
+        Starts the profile that was loaded in profile_load()
+
+        :return: None
+        """
         pass
 
 
@@ -134,7 +181,7 @@ def pvsim_scan():
             else:
                 if module_name is not None and module_name in sys.modules:
                     del sys.modules[module_name]
-        except Exception, e:
+        except Exception as e:
             if module_name is not None and module_name in sys.modules:
                 del sys.modules[module_name]
             raise PVSimError('Error scanning module %s: %s' % (module_name, str(e)))
