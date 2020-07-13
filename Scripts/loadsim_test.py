@@ -29,77 +29,47 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Questions can be directed to support@sunspec.org
 """
-"""
-Copyright (c) 2017, Sandia National Labs and SunSpec Alliance
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright notice, this
-list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-Neither the names of the Sandia National Labs and SunSpec Alliance nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-Questions can be directed to support@sunspec.org
-"""
 
 import sys
 import os
 import traceback
 
-from svpelab import gridsim
+# needed if running script stand alone
+lib_path = os.path.join(os.path.dirname(__file__), '..', 'Lib')
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+print(sys.path)
+
+# place script library imports here
+from svpelab import loadsim
 import script
 
 def test_run():
 
     result = script.RESULT_FAIL
-    gsim_1 = gsim_2 = None
+    load = None
 
     try:
-        # initialize grid simulation
-        gsim_1 = gridsim.gridsim_init(ts, '1')
-        ts.log('Grid Simulation 1: %s' % gsim_1.info())
+        load = loadsim.loadsim_init(ts)
+        ts.log('Load device: %s' % load.info())
 
-        gsim_2 = gridsim.gridsim_init(ts, '2')
-        ts.log('Grid Simulation 2: %s' % gsim_2.info())
-
-        result = script.RESULT_PASS
+        result = script.RESULT_COMPLETE
 
     except script.ScriptFail as e:
         reason = str(e)
         if reason:
             ts.log_error(reason)
     finally:
-        if gsim_1:
-            gsim_1.close()
-        if gsim_2:
-            gsim_2.close()
+        if load is not None:
+            load.close()
 
     return result
 
-
 def run(test_script):
+
     try:
         global ts
-        ts= test_script
+        ts = test_script
         rc = 0
         result = script.RESULT_COMPLETE
 
@@ -122,30 +92,28 @@ def run(test_script):
 
 info = script.ScriptInfo(name=os.path.basename(__file__), run=run, version='1.0.0')
 
-info.param_group('profile', label='FW Profile')
-info.param('profile.profile_name', label='Simulation profile', default='FW Profile',
-           values=['FW Profile', 'VV Profile', 'Manual'],
-           desc='"Manual" is reserved for not running a profile.')
-
-#Grid simulator
-gridsim.params(info, '1', 'Grid Simulation 1')
-gridsim.params(info, '2', 'Grid Simulation 2')
+# loadsim parameters
+loadsim.params(info)
 
 def script_info():
+    
     return info
 
 
 if __name__ == "__main__":
-
 
     # stand alone invocation
     config_file = None
     if len(sys.argv) > 1:
         config_file = sys.argv[1]
 
-    test_script = script.Script(info=script_info(), config_file=config_file)
+    # config_file = os.path.join(os.path.dirname(__file__), '..', 'Tests', 'das test.tst')
+
+    params = None
+
+    test_script = script.Script(info=script_info(), config_file=config_file, params=params)
+    test_script.log('log it')
 
     run(test_script)
-
 
 

@@ -57,8 +57,8 @@ class DCSim(dcsim.DCSim):
     """
     Implementation for manual
     """
-    def __init__(self, ts, group_name, support_interfaces=None):
-        dcsim.DCSim.__init__(self, ts, group_name, support_interfaces=support_interfaces)
+    def __init__(self, ts, group_name):
+        dcsim.DCSim.__init__(self, ts, group_name)
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)
