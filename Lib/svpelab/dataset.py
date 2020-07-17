@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Questions can be directed to support@sunspec.org
 """
 import datetime
+import pandas as pd
 
 class DatasetError(Exception):
     """
@@ -73,6 +74,7 @@ class Dataset(object):
         self.points = points                      # point names
         self.data = data                          # data
         self.ts = ts
+        self.df = pd.DataFrame
 
         if points is None:
             self.points = []
@@ -125,37 +127,45 @@ class Dataset(object):
             self.data.append([])
 
     def to_csv(self, filename):
-        cols = list(range(len(self.data)))
-        if len(cols) > 0:
-            f = open(filename, 'w')
-            f.write('%s\n' % ', '.join(map(str, self.points)))
-            for i in range(len(self.data[0])):
-                d = []
-                for j in cols:
-                    # self.ts.log_debug('data = %s' % self.data)
-                    # self.ts.log_debug('point names = %s' % self.points)
-                    # self.ts.log_debug('len(points) = %s, len(data) = %s' % (len(self.points), len(self.data)))
-                    # self.ts.log_debug('j = %s, i = %i, self.data[j][i] = %s' % (j, i, self.data[j][i]))
-                    d.append(self.data[j][i])
-                f.write('%s\n' % ', '.join(map(str, d)))
-            f.close()
+        mode = self.ts.param_value('das.' + 'mode')
+        if mode != 'DAS Simulation':
+            cols = list(range(len(self.data)))
+            if len(cols) > 0:
+                f = open(filename, 'w')
+                f.write('%s\n' % ', '.join(map(str, self.points)))
+                for i in range(len(self.data[0])):
+                    d = []
+                    for j in cols:
+                        # self.ts.log_debug('data = %s' % self.data)
+                        # self.ts.log_debug('point names = %s' % self.points)
+                        # self.ts.log_debug('len(points) = %s, len(data) = %s' % (len(self.points), len(self.data)))
+                        # self.ts.log_debug('j = %s, i = %i, self.data[j][i] = %s' % (j, i, self.data[j][i]))
+                        d.append(self.data[j][i])
+                    f.write('%s\n' % ', '.join(map(str, d)))
+                f.close()
+        else:
+            self.df.to_csv(filename, index=False)
 
     def from_csv(self, filename, sep=','):
         self.clear()
         f = open(filename, 'r')
-        ids = None
-        while ids is None:
-            line = f.readline().strip()
-            if len(line) > 0 and line[0] != '#':
-                ids = [e.strip() for e in line.split(sep)]
-        self.points = ids
-        for i in range(len(self.points)):
-            self.data.append([])
-        for line in f:
-            data = [float(e.strip()) for e in line.split(sep)]
-            if len(data) > 0:
-                self.append(data)
+        lines = f.readlines()
+        self.points = [e.strip() for e in lines.pop(0).split(sep)]
+        for line in lines:
+            data = []
+            for e in line.split(sep):
+                if 'Step' not in e and 'None' not in e:
+                    data.append(float(e.strip()))
+                elif 'Step' in e or 'None' in e:
+                    data.append(e.strip())
+                    if len(data) > 0:
+                        self.data.append(data)
+                # else:
+                #     data.append(e.strip())
+
         f.close()
+
+
 
 
 if __name__ == "__main__":

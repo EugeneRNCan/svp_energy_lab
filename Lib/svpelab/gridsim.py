@@ -122,7 +122,7 @@ class GridSim(object):
 
         # optional interfaces to other SVP abstraction layers/device drivers
         mode = ts.param_value(group_name + '.' + 'mode')
-        if mode != 'Manual':
+        if (mode != 'Manual') and (mode != 'Grid Simulator Simulation'):
             if support_interfaces.get('pvsim') is not None:
                 self.dc_measurement_device = support_interfaces.get('pvsim')
             elif support_interfaces.get('dcsim') is not None:

@@ -131,37 +131,41 @@ class DER(der.DER):
         """
 
         try:
-            params['A'] = self.ts.prompt('Enter A: ')
-            params['AphA'] = self.ts.prompt('Enter AphA: ')
-            params['AphB'] = self.ts.prompt('Enter AphB: ')
-            params['AphC'] = self.ts.prompt('Enter AphC: ')
-            params['PPVphAB'] = self.ts.prompt('Enter PPVphAB: ')
-            params['PPVphBC'] = self.ts.prompt('Enter PPVphBC: ')
-            params['PPVphCA'] = self.ts.prompt('Enter PPVphCA: ')
-            params['PhVphA'] = self.ts.prompt('Enter PhVphA: ')
-            params['PhVphB'] = self.ts.prompt('Enter PhVphB: ')
-            params['PhVphC'] = self.ts.prompt('Enter PhVphC: ')
-            params['W'] = self.ts.prompt('Enter W: ')
-            params['Hz'] = self.ts.prompt('Enter Hz: ')
-            params['VA'] = self.ts.prompt('Enter VA: ')
-            params['VAr'] = self.ts.prompt('Enter VAr: ')
-            params['PF'] = self.ts.prompt('Enter PF: ')
-            params['WH'] = self.ts.prompt('Enter WH: ')
-            params['DCA'] = self.ts.prompt('Enter DCA: ')
-            params['DCV'] = self.ts.prompt('Enter DCV: ')
-            params['DCW'] = self.ts.prompt('Enter DCW: ')
-            params['TmpCab'] = self.ts.prompt('Enter TmpCab: ')
-            params['TmpSnk'] = self.ts.prompt('Enter TmpSnk: ')
-            params['TmpTrns'] = self.ts.prompt('Enter TmpTrns: ')
-            params['TmpOt'] = self.ts.prompt('Enter TmpOt: ')
-            params['St'] = self.ts.prompt('Enter St: ')
-            params['StVnd'] = self.ts.prompt('Enter StVnd: ')
-            params['Evt1'] = self.ts.prompt('Enter Evt1: ')
-            params['Evt2'] = self.ts.prompt('Enter Evt2: ')
-            params['EvtVnd1'] = self.ts.prompt('Enter EvtVnd1: ')
-            params['EvtVnd2'] = self.ts.prompt('Enter EvtVnd2: ')
-            params['EvtVnd3'] = self.ts.prompt('Enter EvtVnd3: ')
-            params['EvtVnd4'] = self.ts.prompt('Enter EvtVnd4: ')
+            a = 123
+            params = {}
+
+            params['A'] = a
+            params['AphA'] = a
+            params['AphB'] = a
+            params['AphC'] = a
+            params['PPVphAB'] = a
+            params['PPVphBC'] = a
+            params['PPVphCA'] = a
+            params['PhVphA'] = a
+            params['PhVphB'] = a
+            params['PhVphC'] = a
+            params['W'] = a
+            params['Hz'] = a
+            params['VA'] = a
+            params['VAr'] = a
+            params['PF'] = a
+            params['WH'] = a
+            params['DCA'] = a
+            params['DCV'] = a
+            params['DCW'] = a
+            params['TmpCab'] = a
+            params['TmpSnk'] = a
+            params['TmpTrns'] = a
+            params['TmpOt'] = a
+            params['St'] = a
+            params['StVnd'] = a
+            params['Evt1'] = a
+            params['Evt2'] = a
+            params['EvtVnd1'] = a
+            params['EvtVnd2'] = a
+            params['EvtVnd3'] = a
+            params['EvtVnd4'] = a
+
         except Exception as e:
             raise der.DERError(str(e))
 
@@ -384,27 +388,6 @@ class DER(der.DER):
         :param params: Dictionary of parameters to be updated.
         :return: Dictionary of active settings for volt/var control.
         """
-
-        try:
-            if params is not None:
-                self.ts.confirm('Set the following parameters %s' % params)
-            else:
-                params = {}
-                self.inv.volt_var.read()
-                if self.inv.volt_var.ModEna == 0:
-                    params['Ena'] = False
-                else:
-                    params['Ena'] = True
-                params['ActCrv'] = self.inv.volt_var.ActCrv
-                params['NCrv'] = self.inv.volt_var.NCrv
-                params['NPt'] = self.inv.volt_var.NPt
-                params['WinTms'] = self.inv.volt_var.WinTms
-                params['RmpTms'] = self.inv.volt_var.RmpTms
-                params['RvrtTms'] = self.inv.volt_var.RvrtTms
-                if self.inv.volt_var.ActCrv != 0:
-                    params['curve'] = self.volt_var_curve(id=self.inv.volt_var.ActCrv)
-        except Exception as e:
-            raise der.DERError(str(e))
 
         return params
 

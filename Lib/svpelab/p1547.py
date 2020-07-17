@@ -513,6 +513,26 @@ class DataLogging:
             'X_MEAS': 2088.702}
         """
         # TODO : In a more sophisticated approach, get_initial['timestamp'] will come from a
+        mode = self.ts.param_value(daq.group_name + '.' + 'mode')
+        initial = {}
+        if mode != 'DAS Simulation':
+            # reliable secure thread or data acquisition timestamp
+            self.set_x_y_variable(step=step)
+            initial['timestamp'] = datetime.now()
+            daq.data_sample()
+            data = daq.data_capture_read()
+
+            daq.sc['event'] = step
+            for meas_value in self.meas_values:
+                initial['%s_MEAS' % meas_value] = self.get_measurement_total(data=data, type_meas=meas_value, log=False)
+                daq.sc['%s_MEAS' % meas_value] = initial['%s_MEAS' % meas_value]
+
+            daq.data_sample()
+        else:
+            data = daq.data_sample('init')
+            initial['timestamp'] = datetime.now()
+            for meas_value in self.meas_values:
+                initial['%s_MEAS' % meas_value] = data[' %s_MEAS' % meas_value]
         #  reliable secure thread or data acquisition timestamp
         #self.set_x_y_variable(step=step)
         #initial = {}

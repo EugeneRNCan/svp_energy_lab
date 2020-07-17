@@ -32,7 +32,7 @@ Questions can be directed to support@sunspec.org
 
 import os
 import time
-from . import dataset
+import pandas as pd
 
 
 class DeviceError(Exception):
@@ -47,17 +47,24 @@ class Device(object):
     def __init__(self, params=None):
         self.ts = params['ts']
         self.points = params['points']
+        self.sample_interval = params.get('sample_interval')
         self.data_points = []
-        self.data_file = params['data_file']
-        self.at_end = params['at_end']
-        self.file_= None
+        self.data_files_path = params['data_files_path']
+        f = open(os.path.join(self.data_files_path, 'CSV_ORDER_NAMES.txt'), 'r')
+        self.data_files_names = f.readlines()
         self.use_timestamp = params['use_timestamp']
-        self.ds = dataset.Dataset()
+        self.test = -1
         self.index = 0
+        self.df = pd.DataFrame
+        self.dfs = {'TR1': pd.DataFrame, 'TR2': pd.DataFrame, 'INIT': pd.DataFrame}
+        self.last_TR2 = pd.Series
+        self.start_new_csv = False
 
-        if self.data_file:
-            self.ds.from_csv(self.data_file)
-            self.data_points = list(self.ds.points)
+        if self.data_files_path:
+            pass
+            # for i in self.ds.points:
+            #     if 'AC' in i:
+            #         self.data_points.append(i)
         else:
             raise DeviceError('No data file specified')
 
@@ -71,24 +78,50 @@ class Device(object):
         pass
 
     def data_capture(self, enable=True):
+        if enable is True:
+            self.test += 1
+            self.new_csv_dfs()
+            self.start_new_csv = True
+            self.index = 0
         pass
 
-    def data_read(self):
-        data = []
-        if len(self.ds.points) > 0:
-            count = len(self.ds.data[0])
-            if count > 0:
-                if self.index >= count:
-                    if self.at_end == 'Loop to start':
-                        self.index = 0
-                    elif self.at_end == 'Repeat last record':
-                        self.index = count - 1
-                    else:
-                        raise DeviceError('End of data reached')
-
-            for i in range(len(self.ds.points)):
-                data.append(self.ds.data[i][self.index])
-
+    def new_csv_dfs(self):
+        self.df = pd.read_csv(os.path.join(self.data_files_path, self.data_files_names[self.test].replace('\n', '')))
+        self.dfs['TR1'] = self.df[self.df[' EVENT'].str.contains("TR_1", regex=True)].drop_duplicates(subset=' EVENT',
+                                                                                                keep='last',
+                                                                                                inplace=False).reset_index(drop=True)
+        self.dfs['TR2'] = self.df[self.df[' EVENT'].str.contains("TR_2", regex=True)].drop_duplicates(subset=' EVENT',
+                                                                                                keep='last',
+                                                                                                inplace=False).reset_index(drop=True)
+        self.dfs['INIT'] = self.df.iloc[1]
+    def data_read(self, type=''):
+        data = pd.Series
+        if type == 'init':
+            if self.start_new_csv is True:
+                data = self.dfs['INIT']
+            else:
+                data = self.last_TR2
+        elif type == 'TR2':
+            data = self.dfs['TR2'].iloc[self.index]
+            self.index += 1
+            self.last_TR2 = data
+        elif type == 'TR1':
+            data = self.dfs['TR1'].iloc[self.index]
+        # total = len(self.ds.points)
+        # data = []
+        # #while self.index != len(self.ds.data) - 1:
+        # if self.data_lenght == 0:
+        #     for i in self.ds.points:
+        #         if 'AC' not in i and 'TIME' not in i:
+        #             total -= 1
+        #     self.data_lenght = total
+        # j = 0
+        # while j != self.data_lenght - 1:
+        #     data.append(self.ds.data[self.index][j])
+        #     j += 1
+        # self.index += 1
+        # if self.index == len(self.ds.data):
+        #     self.test += 1
         return data
 
     def waveform_config(self, params):
