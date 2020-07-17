@@ -61,8 +61,8 @@ GROUP_NAME = 'manual'
 
 class Wavegen(wavegen.Wavegen):
 
-    def __init__(self, ts, group_name, points=None):
-        wavegen.Wavegen.__init__(self, ts, group_name)
+    def __init__(self, ts, group_name, points=None, support_interfaces=None):
+        wavegen.Wavegen.__init__(self, ts, group_name, support_interfaces=support_interfaces)
         self.params['comm'] = self._param_value('comm')
         self.params['gen_mode'] = self._param_value('gen_mode')
         self.params['ip_addr'] = self._param_value('ip_addr')

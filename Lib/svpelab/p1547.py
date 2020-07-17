@@ -223,6 +223,7 @@ class FrequencyRideThrough(HilModel):
         elif self.phases == 'Three phase':
             meas_label = [meas_root + '_1', meas_root + '_2', meas_root + '_3']
 
+        """
         # Time response criteria will take last placed value of Y variables
         if self.criteria_mode[0]:
             row_data.append(str(analysis['TR_90_%_PF']))
@@ -308,31 +309,50 @@ class DataLogging:
 
     def set_sc_points(self):
         """
-        Set SC points for DAS depending on which measured variables initialized and targets
-
-        :return: None
+        This getters function creates and returns all the predefined columns for the plotting process
+        :return: result_params
         """
-        # TODO : The target value are in percentage (0-100) and something in P.U. (0-1.0)
-        #       The measure value are in absolute value
+        y_variables = self.y_criteria
+        y2_variables = self.x_criteria
 
-        xs = self.x_criteria
-        ys = self.y_criteria
-        row_data = []
+        # For VV, VW and FW
+        y_points = []
+        y2_points = []
+        y_title = []
+        y2_title = []
 
-        for meas_value in self.meas_values:
-            row_data.append('%s_MEAS' % meas_value)
+        #y_points = '%s_TARGET,%s_MEAS' % (y, y)
+        #y2_points = '%s_TARGET,%s_MEAS' % (y2, y2)
 
-            if meas_value in xs:
-                row_data.append('%s_TARGET' % meas_value)
+        for y in y_variables:
+            self.ts.log_debug('y_temp: %s' % y)
+            #y_temp = self.get_measurement_label('%s' % y)
+            y_temp = '{}'.format(','.join(str(x) for x in self.get_measurement_label('%s' % y)))
+            y_title.append(FULL_NAME[y])
+            y_points.append(y_temp)
+        self.ts.log_debug('y_points: %s' % y_points)
+        y_points = ','.join(y_points)
+        y_title = ','.join(y_title)
 
-            elif meas_value in ys:
-                row_data.append('%s_TARGET' % meas_value)
-                row_data.append('%s_TARGET_MIN' % meas_value)
-                row_data.append('%s_TARGET_MAX' % meas_value)
+        for y2 in y2_variables:
+            self.ts.log_debug('y2_variable for result: %s' % y2)
+            y2_temp = '{}'.format(','.join(str(x) for x in self.get_measurement_label('%s' % y2)))
+            y2_title.append(FULL_NAME[y2])
+            y2_points.append(y2_temp)
+        y2_points = ','.join(y2_points)
+        y2_title = ','.join(y2_title)
 
-        row_data.append('EVENT')
-        self.ts.log_debug('Sc points: %s' % row_data)
-        self.sc_points['sc'] = row_data
+        result_params = {
+            'plot.title': 'title_name',
+            'plot.x.title': 'Time (sec)',
+            'plot.x.points': 'TIME',
+            'plot.y.points': y_points,
+            'plot.y.title': y_title,
+            'plot.y2.points': y2_points,
+            'plot.y2.title': y2_title,
+            'plot.%s_TARGET.min_error' % y: '%s_TARGET_MIN' % y,
+            'plot.%s_TARGET.max_error' % y: '%s_TARGET_MAX' % y,
+        }
 
     def set_result_summary_name(self):
         """
