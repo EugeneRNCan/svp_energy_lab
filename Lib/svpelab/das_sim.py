@@ -50,38 +50,53 @@ def params(info, group_name=None):
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,
                      active=gname('mode'),  active_value=mode)
-    info.param(pname('data_file'), label='Data File (in SVP Files directory)', default='data.csv')
+    info.param(pname('data_files_path'), label='Data Files folder (in SVP Files directory)', default='Files')
     info.param(pname('use_timestamp'), label='Use Data File Timestamp', default='Enabled', values=['Enabled',
                                                                                                    'Disabled'])
-    info.param(pname('at_end'), label='At End of Data', default='Repeat last record', values=['Loop to start',
-                                                                                              'Repeat last record',
-                                                                                              'Return an error'])
+    info.param(pname('use_previous_rand_factors'), label='Use previous random factors', default='Disabled',
+               values=['Enabled', 'Disabled'])
+    info.param(pname('Result_folder_name'), label='Results folder name', default='Results_dir',
+               active=pname('use_previous_rand_factors'), active_value=['Enabled'])
 
 GROUP_NAME = 'sim'
 
 
 class DAS(das.DAS):
-    def __init__(self, ts, group_name, points=None, sc_points=None):
-        das.DAS.__init__(self, ts, group_name, points=points, sc_points=sc_points)
-        data_file = self._param_value('data_file')
-        if data_file and data_file != 'None':
-            data_file = os.path.join(self.files_dir, data_file)
+    def __init__(self, ts, group_name, points=None, sc_points=None, support_interfaces=None):
+        das.DAS.__init__(self, ts, group_name, points=points, sc_points=sc_points, support_interfaces=support_interfaces)
+        data_files_path = self._param_value('data_files_path')
+        if data_files_path and data_files_path != 'None':
+            data_files_path = os.path.join(self.files_dir, data_files_path)
         self.params['points'] = self.points
-        self.params['data_file'] = data_file
+        self.params['data_files_path'] = data_files_path
         self.params['use_timestamp'] = self._param_value('use_timestamp')
-        self.params['at_end'] = self._param_value('at_end')
+        self.params['use_previous_rand_factors'] = self._param_value('use_previous_rand_factors')
+        self.params['Result_folder_name'] = self._param_value('Result_folder_name')
         self.params['ts'] = self.ts
+        self.params['sample_interval'] = 50
 
         self.ts.log('results_dir = %s' % (ts._results_dir))
 
         self.device = device_das_sim.Device(self.params)
         self.data_points = self.device.data_points
-
-        # initialize soft channel points
         self._init_sc_points()
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)
+
+    def data_sample(self, type):
+        """
+        Read the current data values directly from the DAS and place in the current dataset.
+        """
+        if self._capture is True:
+            self._last_datarec = self.device.data_read(type)
+            if self.device.start_new_csv is True:
+                self._ds.df['data'] = self._last_datarec.to_frame().T
+                self._ds.df['rand_factors'] = self.device.get_rand_factors_df()
+                self.device.start_new_csv = False
+            else:
+                self._ds.df['data'] = self._ds.df['data'].append(self._last_datarec, ignore_index=True)
+        return self._last_datarec
 
 
 if __name__ == "__main__":

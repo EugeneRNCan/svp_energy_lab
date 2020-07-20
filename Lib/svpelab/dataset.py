@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Questions can be directed to support@sunspec.org
 """
 import datetime
+import os
 import pandas as pd
 
 class DatasetError(Exception):
@@ -74,7 +75,7 @@ class Dataset(object):
         self.points = points                      # point names
         self.data = data                          # data
         self.ts = ts
-        self.df = pd.DataFrame
+        self.df = {'data': pd.DataFrame, 'rand_factors': pd.DataFrame}
 
         if points is None:
             self.points = []
@@ -144,7 +145,15 @@ class Dataset(object):
                     f.write('%s\n' % ', '.join(map(str, d)))
                 f.close()
         else:
-            self.df.to_csv(filename, index=False)
+            self.df['data'].to_csv(filename, index=False)
+            a = '\\'
+            name_list = filename.split("\\")
+            name = ''
+            for i in range(len(name_list) - 1):
+                name += name_list[i] + '\\'
+            if os.path.isdir(name + 'Random_csv\\') is False:
+                os.makedirs(name + 'Random_csv')
+            self.df['rand_factors'].to_csv(name + 'Random_csv\\' + name_list[len(name_list) - 1], index=False)
 
     def from_csv(self, filename, sep=','):
         self.clear()

@@ -168,9 +168,14 @@ class UtilParameters:
         :param starting_label:
         :return: nothing
         """
+        self.double_letter_label = False
 
-        if grid is not None:
-            grid.config_asymmetric_phase_angles(mag=self.mag[case], angle=self.ang[case])
+        if starting_label is None:
+            starting_label = 'a'
+        starting_label_value = ord(starting_label)
+        self.step_label = starting_label_value
+        # if grid is not None:
+        #     grid.config_asymmetric_phase_angles(mag=self.mag[case], angle=self.ang[case])
 
     """
     Getter functions
@@ -192,6 +197,14 @@ class UtilParameters:
             self.step_label = ord('A')
             self.double_letter_label = True
 
+        if self.double_letter_label:
+            step_label = 'Step {}{}'.format(chr(self.step_label), chr(self.step_label))
+        else:
+            step_label = 'Step {}'.format(chr(self.step_label))
+
+        self.step_label += 1
+        return step_label
+
     def get_waveform_config(self,current_mode,offset):
         params = {}
         params["start_time_value"] = float(self.vrt_start_time - offset)
@@ -200,12 +213,11 @@ class UtilParameters:
         params["end_time_variable"] = "Tend"
         return params
     """
-
-class FrequencyRideThrough(HilModel):
-    def __init__(self):
-        HilModel.__init__()
-        self._config()
-
+    class FrequencyRideThrough(HilModel):
+        def __init__(self):
+            HilModel.__init__()
+            self._config()
+    """
     def get_measurement_label(self, type_meas):
         """
         Returns the measurement label for a measurement type
@@ -223,7 +235,7 @@ class FrequencyRideThrough(HilModel):
         elif self.phases == 'Three phase':
             meas_label = [meas_root + '_1', meas_root + '_2', meas_root + '_3']
 
-        """
+        """"
         # Time response criteria will take last placed value of Y variables
         if self.criteria_mode[0]:
             row_data.append(str(analysis['TR_90_%_PF']))
@@ -231,6 +243,8 @@ class FrequencyRideThrough(HilModel):
             row_data.append(str(analysis['%s_TR_%s_PF' % (ys[-1], first_iter)]))
         if self.criteria_mode[2]:
             row_data.append(str(analysis['%s_TR_%s_PF' % (ys[-1], last_iter)]))
+        """
+        return meas_label
 
     def get_measurement_total(self, data, type_meas, log=False):
         """
@@ -245,31 +259,59 @@ class FrequencyRideThrough(HilModel):
         nb_phases = None
 
         try:
-            if self.phases == 'Single phase':
-                value = data.get(self.get_measurement_label(type_meas)[0])
-                if log:
-                    self.ts.log_debug('        %s are: %s'
-                                      % (self.get_measurement_label(type_meas), value))
-                nb_phases = 1
+            mode = self.ts.param_value('das.' + 'mode')
+            if mode != 'DAS Simulation':
+                if self.phases == 'Single phase':
+                    value = data.get(self.get_measurement_label(type_meas)[0])
+                    if log:
+                        self.ts.log_debug('        %s are: %s'
+                                          % (self.get_measurement_label(type_meas), value))
+                    nb_phases = 1
 
-            elif self.phases == 'Split phase':
-                value1 = data.get(self.get_measurement_label(type_meas)[0])
-                value2 = data.get(self.get_measurement_label(type_meas)[1])
-                if log:
-                    self.ts.log_debug('        %s are: %s, %s'
-                                      % (self.get_measurement_label(type_meas), value1, value2))
-                value = value1 + value2
-                nb_phases = 2
+                elif self.phases == 'Split phase':
+                    value1 = data.get(self.get_measurement_label(type_meas)[0])
+                    value2 = data.get(self.get_measurement_label(type_meas)[1])
+                    if log:
+                        self.ts.log_debug('        %s are: %s, %s'
+                                          % (self.get_measurement_label(type_meas), value1, value2))
+                    value = value1 + value2
+                    nb_phases = 2
 
-            elif self.phases == 'Three phase':
-                value1 = data.get(self.get_measurement_label(type_meas)[0])
-                value2 = data.get(self.get_measurement_label(type_meas)[1])
-                value3 = data.get(self.get_measurement_label(type_meas)[2])
-                if log:
-                    self.ts.log_debug('        %s are: %s, %s, %s'
-                                      % (self.get_measurement_label(type_meas), value1, value2, value3))
-                value = value1 + value2 + value3
-                nb_phases = 3
+                elif self.phases == 'Three phase':
+                    value1 = data.get(self.get_measurement_label(type_meas)[0])
+                    value2 = data.get(self.get_measurement_label(type_meas)[1])
+                    value3 = data.get(self.get_measurement_label(type_meas)[2])
+                    if log:
+                        self.ts.log_debug('        %s are: %s, %s, %s'
+                                          % (self.get_measurement_label(type_meas), value1, value2, value3))
+                    value = value1 + value2 + value3
+                    nb_phases = 3
+            else:
+                if self.phases == 'Single phase':
+                    value = data[' ' + self.get_measurement_label(type_meas)[0]]
+                    if log:
+                        self.ts.log_debug('        %s are: %s'
+                                          % (self.get_measurement_label(type_meas), value))
+                    nb_phases = 1
+
+                elif self.phases == 'Split phase':
+                    value1 = data[' ' + self.get_measurement_label(type_meas)[0]]
+                    value2 = data[' ' + self.get_measurement_label(type_meas)[1]]
+                    if log:
+                        self.ts.log_debug('        %s are: %s, %s'
+                                          % (self.get_measurement_label(type_meas), value1, value2))
+                    value = value1 + value2
+                    nb_phases = 2
+
+                elif self.phases == 'Three phase':
+                    value1 = data[' ' + self.get_measurement_label(type_meas)[0]]
+                    value2 = data[' ' + self.get_measurement_label(type_meas)[1]]
+                    value3 = data[' ' + self.get_measurement_label(type_meas)[2]]
+                    if log:
+                        self.ts.log_debug('        %s are: %s, %s, %s'
+                                          % (self.get_measurement_label(type_meas), value1, value2, value3))
+                    value = value1 + value2 + value3
+                    nb_phases = 3
 
         except Exception as e:
             self.ts.log_error('Inverter phase parameter not set correctly.')
@@ -282,7 +324,10 @@ class FrequencyRideThrough(HilModel):
             value = value / nb_phases
         elif type_meas == 'F':
             # No need to do data average for frequency
-            value = data.get(self.get_measurement_label(type_meas)[0])
+            if mode != 'DAS Simulation':
+                value = data.get(self.get_measurement_label(type_meas)[0])
+            else:
+                value = data[' ' + self.get_measurement_label(type_meas)[0]]
 
         return round(value, 3)
 
@@ -309,50 +354,31 @@ class DataLogging:
 
     def set_sc_points(self):
         """
-        This getters function creates and returns all the predefined columns for the plotting process
-        :return: result_params
+        Set SC points for DAS depending on which measured variables initialized and targets
+
+        :return: None
         """
-        y_variables = self.y_criteria
-        y2_variables = self.x_criteria
+        # TODO : The target value are in percentage (0-100) and something in P.U. (0-1.0)
+        #       The measure value are in absolute value
 
-        # For VV, VW and FW
-        y_points = []
-        y2_points = []
-        y_title = []
-        y2_title = []
+        xs = self.x_criteria
+        ys = self.y_criteria
+        row_data = []
 
-        #y_points = '%s_TARGET,%s_MEAS' % (y, y)
-        #y2_points = '%s_TARGET,%s_MEAS' % (y2, y2)
+        for meas_value in self.meas_values:
+            row_data.append('%s_MEAS' % meas_value)
 
-        for y in y_variables:
-            self.ts.log_debug('y_temp: %s' % y)
-            #y_temp = self.get_measurement_label('%s' % y)
-            y_temp = '{}'.format(','.join(str(x) for x in self.get_measurement_label('%s' % y)))
-            y_title.append(FULL_NAME[y])
-            y_points.append(y_temp)
-        self.ts.log_debug('y_points: %s' % y_points)
-        y_points = ','.join(y_points)
-        y_title = ','.join(y_title)
+            if meas_value in xs:
+                row_data.append('%s_TARGET' % meas_value)
 
-        for y2 in y2_variables:
-            self.ts.log_debug('y2_variable for result: %s' % y2)
-            y2_temp = '{}'.format(','.join(str(x) for x in self.get_measurement_label('%s' % y2)))
-            y2_title.append(FULL_NAME[y2])
-            y2_points.append(y2_temp)
-        y2_points = ','.join(y2_points)
-        y2_title = ','.join(y2_title)
+            elif meas_value in ys:
+                row_data.append('%s_TARGET' % meas_value)
+                row_data.append('%s_TARGET_MIN' % meas_value)
+                row_data.append('%s_TARGET_MAX' % meas_value)
 
-        result_params = {
-            'plot.title': 'title_name',
-            'plot.x.title': 'Time (sec)',
-            'plot.x.points': 'TIME',
-            'plot.y.points': y_points,
-            'plot.y.title': y_title,
-            'plot.y2.points': y2_points,
-            'plot.y2.title': y2_title,
-            'plot.%s_TARGET.min_error' % y: '%s_TARGET_MIN' % y,
-            'plot.%s_TARGET.max_error' % y: '%s_TARGET_MAX' % y,
-        }
+        row_data.append('EVENT')
+        self.ts.log_debug('Sc points: %s' % row_data)
+        self.sc_points['sc'] = row_data
 
     def set_result_summary_name(self):
         """
@@ -512,51 +538,74 @@ class DataLogging:
             'Y_MEAS': 60.998,
             'X_MEAS': 2088.702}
         """
-        # TODO : In a more sophisticated approach, get_initial['timestamp'] will come from a
+        # # TODO : In a more sophisticated approach, get_initial['timestamp'] will come from a
+        # mode = self.ts.param_value(daq.group_name + '.' + 'mode')
+        # initial = {}
+        # if mode != 'DAS Simulation':
+        #     # reliable secure thread or data acquisition timestamp
+        #     self.set_x_y_variable(step=step)
+        #     initial['timestamp'] = datetime.now()
+        #     daq.data_sample()
+        #     data = daq.data_capture_read()
+        #
+        #     daq.sc['event'] = step
+        #     for meas_value in self.meas_values:
+        #         initial['%s_MEAS' % meas_value] = self.get_measurement_total(data=data, type_meas=meas_value, log=False)
+        #         daq.sc['%s_MEAS' % meas_value] = initial['%s_MEAS' % meas_value]
+        #
+        #     daq.data_sample()
+        # else:
+        #     data = daq.data_sample('init')
+        #     initial['timestamp'] = datetime.now()
+        #     for meas_value in self.meas_values:
+        #         initial['%s_MEAS' % meas_value] = data[' %s_MEAS' % meas_value]
+        # reliable secure thread or data acquisition timestamp
+        #self.set_x_y_variable(step=step)
+        #initial = {}
         mode = self.ts.param_value(daq.group_name + '.' + 'mode')
-        initial = {}
         if mode != 'DAS Simulation':
-            # reliable secure thread or data acquisition timestamp
-            self.set_x_y_variable(step=step)
-            initial['timestamp'] = datetime.now()
+            self.initial_value['timestamp'] = datetime.now()
+            #x = self.get_x_y_variable('x')
+            #y = self.get_x_y_variable('y')
             daq.data_sample()
             data = daq.data_capture_read()
-
             daq.sc['event'] = step
-            for meas_value in self.meas_values:
-                initial['%s_MEAS' % meas_value] = self.get_measurement_total(data=data, type_meas=meas_value, log=False)
-                daq.sc['%s_MEAS' % meas_value] = initial['%s_MEAS' % meas_value]
-
+            if isinstance(self.x_criteria, list):
+                for xs in self.x_criteria:
+                    self.initial_value[xs] = {'x_value': self.get_measurement_total(data=data, type_meas=xs, log=False)}
+                    daq.sc['%s_MEAS' % xs] = self.initial_value[xs]['x_value']
+            else:
+                self.initial_value[self.x_criteria] = {'x_value': self.get_measurement_total(data=data, type_meas=self.x_criteria, log=False)}
+                daq.sc['%s_MEAS' % self.x_criteria] = self.initial_value[self.x_criteria]['x_value']
+            if isinstance(self.y_criteria, list):
+                for ys in self.y_criteria:
+                    self.initial_value[ys] = {'y_value': self.get_measurement_total(data=data, type_meas=ys, log=False)}
+                    daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
+            else:
+                self.initial_value[self.y_criteria] = {'y_value': self.get_measurement_total(data=data, type_meas=self.y_criteria, log=False)}
+                daq.sc['%s_MEAS' % self.y_criteria] = self.initial_value[self.y_criteria]['y_value']
             daq.data_sample()
         else:
             data = daq.data_sample('init')
-            initial['timestamp'] = datetime.now()
-            for meas_value in self.meas_values:
-                initial['%s_MEAS' % meas_value] = data[' %s_MEAS' % meas_value]
-        #  reliable secure thread or data acquisition timestamp
-        #self.set_x_y_variable(step=step)
-        #initial = {}
-        self.initial_value['timestamp'] = datetime.now()
-        #x = self.get_x_y_variable('x')
-        #y = self.get_x_y_variable('y')
-        daq.data_sample()
-        data = daq.data_capture_read()
-        daq.sc['event'] = step
-        if isinstance(self.x_criteria, list):
-            for xs in self.x_criteria:
-                self.initial_value[xs] = {'x_value': self.get_measurement_total(data=data, type_meas=xs, log=False)}
-                daq.sc['%s_MEAS' % xs] = self.initial_value[xs]['x_value']
-        else:
-            self.initial_value[self.x_criteria] = {'x_value': self.get_measurement_total(data=data, type_meas=self.x_criteria, log=False)}
-            daq.sc['%s_MEAS' % self.x_criteria] = self.initial_value[self.x_criteria]['x_value']
-        if isinstance(self.y_criteria, list):
-            for ys in self.y_criteria:
-                self.initial_value[ys] = {'y_value': self.get_measurement_total(data=data, type_meas=ys, log=False)}
-                daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
-        else:
-            self.initial_value[self.y_criteria] = {'y_value': self.get_measurement_total(data=data, type_meas=self.y_criteria, log=False)}
-            daq.sc['%s_MEAS' % self.y_criteria] = self.initial_value[self.y_criteria]['y_value']
-        daq.data_sample()
+            self.initial_value['timestamp'] = datetime.now() + timedelta(seconds=data['TIME'])
+            if isinstance(self.x_criteria, list):
+                for xs in self.x_criteria:
+                    self.initial_value[xs] = {
+                        'x_value': self.get_measurement_total(data=data, type_meas=xs, log=False)}
+                    daq.sc['%s_MEAS' % xs] = self.initial_value[xs]['x_value']
+            else:
+                self.initial_value[self.x_criteria] = {
+                    'x_value': self.get_measurement_total(data=data, type_meas=self.x_criteria, log=False)}
+                daq.sc['%s_MEAS' % self.x_criteria] = self.initial_value[self.x_criteria]['x_value']
+            if isinstance(self.y_criteria, list):
+                for ys in self.y_criteria:
+                    self.initial_value[ys] = {
+                        'y_value': self.get_measurement_total(data=data, type_meas=ys, log=False)}
+                    daq.sc['%s_MEAS' % ys] = self.initial_value[ys]["y_value"]
+            else:
+                self.initial_value[self.y_criteria] = {
+                    'y_value': self.get_measurement_total(data=data, type_meas=self.y_criteria, log=False)}
+                daq.sc['%s_MEAS' % self.y_criteria] = self.initial_value[self.y_criteria]['y_value']
 
         return self.initial_value
 
@@ -579,68 +628,101 @@ class DataLogging:
         x = self.x_criteria
         y = self.y_criteria
         self.tr = tr
-
-        #self.ts.log(f'initial timetstamp = {self.initial_value["timestamp"]}')
-        first_tr = self.initial_value['timestamp'] + timedelta(seconds=tr)
-        #self.ts.log(f'first timetstamp = {first_tr}')
-        tr_list = [first_tr]
-        #self.ts.log_debug(f'tr_list={tr_list}')
-        for i in range(n_tr - 1):
-            tr_list.append(tr_list[i] + timedelta(seconds=tr))
-            for meas_value in self.meas_values:
-                self.tr_value['%s_TR_%s' % (meas_value, i)] = None
-                if meas_value in x:
-                    self.tr_value['%s_TR_TARG_%s' % (meas_value, i)] = None
-                elif meas_value in y:
-                    self.tr_value['%s_TR_TARG_%s' % (meas_value, i)] = None
-                    self.tr_value['%s_TR_%s_MIN' % (meas_value, i)] = None
-                    self.tr_value['%s_TR_%s_MAX' % (meas_value, i)] = None
-        tr_iter = 1
-        for tr_ in tr_list:
-            self.ts.log_debug(f'tr_={tr_list}')
-            now = datetime.now()
-            if now <= tr_:
-                time_to_sleep = tr_ - datetime.now()
-                self.ts.log('Waiting %s seconds to get the next Tr data for analysis...' %
-                            time_to_sleep.total_seconds())
-                self.ts.sleep(time_to_sleep.total_seconds())
-            daq.data_sample()  # sample new data
-            data = daq.data_capture_read()  # Return dataset created from last data capture
-            daq.sc['EVENT'] = "{0}_TR_{1}".format(step, tr_iter)
-
-            # update daq.sc values for Y_TARGET, Y_TARGET_MIN, and Y_TARGET_MAX
-            #self.update_target_value(daq=daq, pwr_lvl=pwr_lvl, curve=curve, x_target=x_target, y_target=y_target,
-            #                         data=data)
-            self.calculate_min_max_values(daq=daq, data=data)
-            # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
-            #self.tr_value[tr_iter] = {}
-            for meas_value in self.meas_values:
-                try:
-                    #self.tr_value[tr_iter]['%s_MEAS' % meas_value] = daq.sc['%s_MEAS' % meas_value]
-                    self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = daq.sc['%s_MEAS' % meas_value]
-
-                    # self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+        mode = self.ts.param_value(daq.group_name + '.' + 'mode')
+        if mode != 'DAS Simulation':
+            #self.ts.log(f'initial timetstamp = {self.initial_value["timestamp"]}')
+            first_tr = self.initial_value['timestamp'] + timedelta(seconds=tr)
+            #self.ts.log(f'first timetstamp = {first_tr}')
+            tr_list = [first_tr]
+            #self.ts.log_debug(f'tr_list={tr_list}')
+            for i in range(n_tr - 1):
+                tr_list.append(tr_list[i] + timedelta(seconds=tr))
+                for meas_value in self.meas_values:
+                    self.tr_value['%s_TR_%s' % (meas_value, i)] = None
                     if meas_value in x:
-                        #self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
-                        self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = daq.sc['%s_TARGET' % meas_value]
-
-                        # self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        self.tr_value['%s_TR_TARG_%s' % (meas_value, i)] = None
                     elif meas_value in y:
-                        #self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
-                        #self.tr_value[tr_iter]['%s_TARGET_MIN' % meas_value] = daq.sc['%s_TARGET_MIN' % meas_value]
-                        #self.tr_value[tr_iter]['%s_TARGET_MAX' % meas_value] = daq.sc['%s_TARGET_MAX' % meas_value]
-                        self.tr_value[f'{meas_value}_TR_TARG_{tr_iter}'] = daq.sc['%s_TARGET' % meas_value]
-                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
-                        self.tr_value[f'{meas_value}_TR_{tr_iter}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
-                        # self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
-                        #             (meas_value, daq.sc['%s_MEAS' % meas_value],
-                        #              daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
-                except Exception as e:
-                    self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
+                        self.tr_value['%s_TR_TARG_%s' % (meas_value, i)] = None
+                        self.tr_value['%s_TR_%s_MIN' % (meas_value, i)] = None
+                        self.tr_value['%s_TR_%s_MAX' % (meas_value, i)] = None
+            tr_iter = 1
+            for tr_ in tr_list:
+                self.ts.log_debug(f'tr_={tr_list}')
+                now = datetime.now()
+                if now <= tr_:
+                    time_to_sleep = tr_ - datetime.now()
+                    self.ts.log('Waiting %s seconds to get the next Tr data for analysis...' %
+                                time_to_sleep.total_seconds())
+                    self.ts.sleep(time_to_sleep.total_seconds())
+                daq.data_sample()  # sample new data
+                data = daq.data_capture_read()  # Return dataset created from last data capture
+                daq.sc['EVENT'] = "{0}_TR_{1}".format(step, tr_iter)
 
-            #self.tr_value[tr_iter]["timestamp"] = tr_
-            self.tr_value[f'timestamp_{tr_iter}'] = tr_
-            tr_iter = tr_iter + 1
+                # update daq.sc values for Y_TARGET, Y_TARGET_MIN, and Y_TARGET_MAX
+                #self.update_target_value(daq=daq, pwr_lvl=pwr_lvl, curve=curve, x_target=x_target, y_target=y_target,
+                #                         data=data)
+                self.calculate_min_max_values(daq=daq, data=data)
+                # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
+                #self.tr_value[tr_iter] = {}
+                for meas_value in self.meas_values:
+                    try:
+                        #self.tr_value[tr_iter]['%s_MEAS' % meas_value] = daq.sc['%s_MEAS' % meas_value]
+                        self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = daq.sc['%s_MEAS' % meas_value]
+
+                        # self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        if meas_value in x:
+                            #self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
+                            self.tr_value['%s_TR_%s' % (meas_value, tr_iter)] = daq.sc['%s_TARGET' % meas_value]
+
+                            # self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        elif meas_value in y:
+                            #self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
+                            #self.tr_value[tr_iter]['%s_TARGET_MIN' % meas_value] = daq.sc['%s_TARGET_MIN' % meas_value]
+                            #self.tr_value[tr_iter]['%s_TARGET_MAX' % meas_value] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_TARG_{tr_iter}'] = daq.sc['%s_TARGET' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_{tr_iter}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_{tr_iter}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            # self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
+                            #             (meas_value, daq.sc['%s_MEAS' % meas_value],
+                            #              daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
+                    except Exception as e:
+                        self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
+
+                #self.tr_value[tr_iter]["timestamp"] = tr_
+                self.tr_value[f'timestamp_{tr_iter}'] = tr_
+                tr_iter = tr_iter + 1
+        else:
+            for i in range(1, n_tr + 1):
+                data = daq.data_sample('TR' + str(i))
+                self.calculate_min_max_values(daq=daq, data=data)
+                # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
+                # self.tr_value[tr_iter] = {}
+                for meas_value in self.meas_values:
+                    try:
+                        # self.tr_value[tr_iter]['%s_MEAS' % meas_value] = daq.sc['%s_MEAS' % meas_value]
+                        self.tr_value['%s_TR_%s' % (meas_value, i)] = daq.sc['%s_MEAS' % meas_value]
+
+                        # self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        if meas_value in x:
+                            # self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
+                            self.tr_value['%s_TR_%s' % (meas_value, i)] = daq.sc['%s_TARGET' % meas_value]
+
+                            # self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        elif meas_value in y:
+                            # self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
+                            # self.tr_value[tr_iter]['%s_TARGET_MIN' % meas_value] = daq.sc['%s_TARGET_MIN' % meas_value]
+                            # self.tr_value[tr_iter]['%s_TARGET_MAX' % meas_value] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_TARG_{i}'] = daq.sc['%s_TARGET' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_{i}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
+                            self.tr_value[f'{meas_value}_TR_{i}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            # self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
+                            #             (meas_value, daq.sc['%s_MEAS' % meas_value],
+                            #              daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
+                    except Exception as e:
+                        self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
+
+                # self.tr_value[tr_iter]["timestamp"] = tr_
+                self.tr_value[f'timestamp_{i}'] = self.initial_value['timestamp'] + timedelta(seconds=data['TIME'])
 
         return self.tr_value
 
@@ -705,7 +787,7 @@ class CriteriaValidation:
         duration = self.tr_value[f"timestamp_{tr}"] - self.initial_value['timestamp']
         duration = duration.total_seconds()
         self.ts.log('Calculating pass/fail for Tr = %s sec, with a target of %s sec' %
-                    (duration, tr))
+                    (duration, self.tr))
 
         # Given that Y(time) is defined by an open loop response characteristic, use that curve to
         # calculated the target, minimum, and max, based on the open loop response expectation
@@ -719,7 +801,7 @@ class CriteriaValidation:
             mra_t = self.MRA['T'] * duration  # MRA(X) = MRA(time) = 0.01*duration
 
         y_ss = self.tr_value[f'{y}_TR_TARG_{tr}']
-        y_target = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss, duration=duration, tr=tr)  # 90%
+        y_target = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss, duration=duration, tr=self.tr)  # 90%
         y_meas = self.tr_value[f'{y}_TR_{tr}']
         # self.ts.log_debug('y_target = %s, y_ss [%s], y_start [%s], duration = %s, tr=%s' %
         #                   (y_target, y_ss, y_start, duration, tr))
@@ -728,18 +810,18 @@ class CriteriaValidation:
             increasing = True
             # Y(time) = open loop curve, so locate the Y(time) value on the curve
             y_min = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss,
-                                             duration=duration - 1.5 * mra_t, tr=tr) - 1.5 * mra_y
+                                             duration=duration - 1.5 * mra_t, tr=self.tr) - 1.5 * mra_y
             # Determine maximum value based on the open loop response expectation
             y_max = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss,
-                                             duration=duration + 1.5 * mra_t, tr=tr) + 1.5 * mra_y
+                                             duration=duration + 1.5 * mra_t, tr=self.tr) + 1.5 * mra_y
         else:  # decreasing values of y
             increasing = False
             # Y(time) = open loop curve, so locate the Y(time) value on the curve
             y_min = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss,
-                                             duration=duration + 1.5 * mra_t, tr=tr) - 1.5 * mra_y
+                                             duration=duration + 1.5 * mra_t, tr=self.tr) - 1.5 * mra_y
             # Determine maximum value based on the open loop response expectation
             y_max = self.calculate_open_loop_value(y0=y_start, y_ss=y_ss,
-                                             duration=duration - 1.5 * mra_t, tr=tr) + 1.5 * mra_y
+                                             duration=duration - 1.5 * mra_t, tr=self.tr) + 1.5 * mra_y
 
         # pass/fail applied to the open loop time response
         if self.script_name == CRP:  # 1-sided analysis

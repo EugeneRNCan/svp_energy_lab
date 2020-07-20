@@ -32,6 +32,7 @@ Questions can be directed to support@sunspec.org
 
 import os
 import time
+import random
 import pandas as pd
 
 
@@ -55,10 +56,21 @@ class Device(object):
         self.use_timestamp = params['use_timestamp']
         self.test = -1
         self.index = 0
-        self.df = pd.DataFrame
+        self.df = pd.read_csv(os.path.join(self.data_files_path, self.data_files_names[0].replace('\n', '')))
         self.dfs = {'TR1': pd.DataFrame, 'TR2': pd.DataFrame, 'INIT': pd.DataFrame}
         self.last_TR2 = pd.Series
         self.start_new_csv = False
+        self.data_points = ['TIME']
+        self.rand_factors_df = pd.DataFrame
+        self.use_previous_rand_factors = params['use_previous_rand_factors']
+        self.Result_folder_name = params['Result_folder_name']
+        for i in list(self.df.columns):
+            if 'AC' in i:
+                self.data_points.append(i.strip())
+
+
+
+
 
         if self.data_files_path:
             pass
@@ -78,6 +90,12 @@ class Device(object):
         pass
 
     def data_capture(self, enable=True):
+        """
+        Indicate each time the daq needs to capture new data, which means the needs to access a new csv
+        :param enable: Bool which indicates if the device can capture data or not
+
+        :return: nothing
+        """
         if enable is True:
             self.test += 1
             self.new_csv_dfs()
@@ -85,16 +103,78 @@ class Device(object):
             self.index = 0
         pass
 
+    def generate_rand_factors_df(self):
+        """
+        Generate a pandas dataframe the same size as the data frame of the csv and full of random factors
+
+        :return: a pandas dataframe with random values factors
+        """
+        df = self.df.copy()
+        for i in list(df.columns):
+            dt = []
+            remove_columns = False
+            for j in df.index:
+                if 'AC' in i and 'INC' not in i:
+                    delta = random.uniform(-0.1, 0.1)
+                    dt.append(1.00 + delta)
+                else:
+                    remove_columns = True
+            if remove_columns:
+                df = df.drop(columns=i)
+            else:
+                df[i] = dt
+        return df
+
     def new_csv_dfs(self):
+        """
+        Set the pandas Dataframes each time a new csv is accessed to produce new results.
+        self.dfs['TR1'] : Dataframe that contains the values for the first Time Response
+        self.dfs['TR2'] : Dataframe that contains the values for the second Time Response
+        self.dfs['INIT'] : Series that contains the first initiale values of the csv file
+        self.df: Dataframe of the entire csv file and then modified by self.rand_factors_df
+        self.rand_factors_df : Dataframe full of random factors
+        :return: nothing
+        """
         self.df = pd.read_csv(os.path.join(self.data_files_path, self.data_files_names[self.test].replace('\n', '')))
+
+        if self.use_previous_rand_factors == 'Enabled':
+            self.rand_factors_df = pd.read_csv(os.path.join(os.path.join(
+                os.path.join(os.path.join(self.ts._results_dir.split('Results\\')[0] + 'Results',
+                                          self.Result_folder_name),
+                             self.ts._result_dir),
+                'Random_csv'),
+                self.data_files_names[self.test].replace('\n', '')))
+        else:
+            self.rand_factors_df = self.generate_rand_factors_df()
+
+        for i in list(self.rand_factors_df.columns):
+            self.df[i] = self.df[i]*self.rand_factors_df[i]
         self.dfs['TR1'] = self.df[self.df[' EVENT'].str.contains("TR_1", regex=True)].drop_duplicates(subset=' EVENT',
-                                                                                                keep='last',
-                                                                                                inplace=False).reset_index(drop=True)
+                                                                                                      keep='last',
+                                                                                                      inplace=False).reset_index(drop=True)
         self.dfs['TR2'] = self.df[self.df[' EVENT'].str.contains("TR_2", regex=True)].drop_duplicates(subset=' EVENT',
-                                                                                                keep='last',
-                                                                                                inplace=False).reset_index(drop=True)
+                                                                                                      keep='last',
+                                                                                                      inplace=False).reset_index(drop=True)
         self.dfs['INIT'] = self.df.iloc[1]
+
+
+
+
+    def get_rand_factors_df(self):
+        """
+        Get the dataframe full of random values
+
+        :return: the Dataframe full of random values
+        """
+        return self.rand_factors_df
+
     def data_read(self, type=''):
+        """
+        Generate a pandas Series that contains the values corresponding the type of data demanded
+        :param type:        string with the type of data needed ('INIT', 'TR2', 'TR1')
+
+        :return: returns series corresponding on the type of data asked
+        """
         data = pd.Series
         if type == 'init':
             if self.start_new_csv is True:
@@ -107,21 +187,7 @@ class Device(object):
             self.last_TR2 = data
         elif type == 'TR1':
             data = self.dfs['TR1'].iloc[self.index]
-        # total = len(self.ds.points)
-        # data = []
-        # #while self.index != len(self.ds.data) - 1:
-        # if self.data_lenght == 0:
-        #     for i in self.ds.points:
-        #         if 'AC' not in i and 'TIME' not in i:
-        #             total -= 1
-        #     self.data_lenght = total
-        # j = 0
-        # while j != self.data_lenght - 1:
-        #     data.append(self.ds.data[self.index][j])
-        #     j += 1
-        # self.index += 1
-        # if self.index == len(self.ds.data):
-        #     self.test += 1
+
         return data
 
     def waveform_config(self, params):
