@@ -530,11 +530,10 @@ class DataLogging:
         """
         # TODO : In a more sophisticated approach, get_initial['timestamp'] will come from a
         #  reliable secure thread or data acquisition timestamp
-
+        self.current_step_label = step_label
         mode = self.ts.param_value(daq.group_name + '.' + 'mode')
         if mode != 'DAS Simulation':
             self.initial_value['timestamp'] = datetime.now()
-            self.current_step_label = step_label
             daq.data_sample()
             data = daq.data_capture_read()
             daq.sc['event'] = self.current_step_label
@@ -644,8 +643,8 @@ class DataLogging:
                             self.tr_value[f'{meas_value}_TR_{tr_iter}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
                             self.tr_value[f'{meas_value}_TR_{tr_iter}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
                             self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
-                                         (meas_value, daq.sc['%s_MEAS' % meas_value],
-                                          daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
+                                        (meas_value, daq.sc['%s_MEAS' % meas_value],
+                                         daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
                     except Exception as e:
                         self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
 
@@ -654,37 +653,35 @@ class DataLogging:
                 self.tr_value['LAST_ITER'] = tr_iter
                 tr_iter = tr_iter + 1
         else:
-            for i in range(1, n_tr + 1):
+            for i in range(1, self.n_tr + 1):
                 data = daq.data_sample('TR' + str(i))
-                self.calculate_min_max_values(daq=daq, data=data)
                 # store the daq.sc['Y_TARGET'], daq.sc['Y_TARGET_MIN'], and daq.sc['Y_TARGET_MAX'] in tr_value
                 # self.tr_value[tr_iter] = {}
                 for meas_value in self.meas_values:
                     try:
-                        # self.tr_value[tr_iter]['%s_MEAS' % meas_value] = daq.sc['%s_MEAS' % meas_value]
                         self.tr_value['%s_TR_%s' % (meas_value, i)] = daq.sc['%s_MEAS' % meas_value]
 
-                        # self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                        self.ts.log('Value %s: %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
                         if meas_value in x:
-                            # self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
-                            self.tr_value['%s_TR_%s' % (meas_value, i)] = daq.sc['%s_TARGET' % meas_value]
-
-                            # self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
+                            daq.sc['%s_TARGET' % meas_value] = step_value
+                            self.tr_value['%s_TR_TARG_%s' % (meas_value, i)] = step_value
+                            self.ts.log('X Value (%s) = %s' % (meas_value, daq.sc['%s_MEAS' % meas_value]))
                         elif meas_value in y:
-                            # self.tr_value[tr_iter]['%s_TARGET' % meas_value] = daq.sc['%s_TARGET' % meas_value]
-                            # self.tr_value[tr_iter]['%s_TARGET_MIN' % meas_value] = daq.sc['%s_TARGET_MIN' % meas_value]
-                            # self.tr_value[tr_iter]['%s_TARGET_MAX' % meas_value] = daq.sc['%s_TARGET_MAX' % meas_value]
+                            daq.sc['%s_TARGET' % meas_value] = self.update_target_value(step_value)
+                            daq.sc['%s_TARGET_MIN' % meas_value], daq.sc[
+                                '%s_TARGET_MAX' % meas_value] = self.calculate_min_max_values(daq=daq, data=data)
                             self.tr_value[f'{meas_value}_TR_TARG_{i}'] = daq.sc['%s_TARGET' % meas_value]
                             self.tr_value[f'{meas_value}_TR_{i}_MIN'] = daq.sc['%s_TARGET_MIN' % meas_value]
                             self.tr_value[f'{meas_value}_TR_{i}_MAX'] = daq.sc['%s_TARGET_MAX' % meas_value]
-                            # self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
-                            #             (meas_value, daq.sc['%s_MEAS' % meas_value],
-                            #              daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
+                            self.ts.log('Y Value (%s) = %s. Pass/fail bounds = [%s, %s]' %
+                                        (meas_value, daq.sc['%s_MEAS' % meas_value],
+                                         daq.sc['%s_TARGET_MIN' % meas_value], daq.sc['%s_TARGET_MAX' % meas_value]))
                     except Exception as e:
                         self.ts.log_debug('Measured value (%s) not recorded: %s' % (meas_value, e))
 
                 # self.tr_value[tr_iter]["timestamp"] = tr_
                 self.tr_value[f'timestamp_{i}'] = self.initial_value['timestamp'] + timedelta(seconds=data['TIME'])
+                self.tr_value['LAST_ITER'] = i
 
         self.tr_value['FIRST_ITER'] = 1
 
