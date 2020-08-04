@@ -34,6 +34,9 @@ import sys
 import os
 import glob
 import importlib
+import pandas as pd
+import numpy as np
+import datetime
 
 from . import dataset
 
@@ -169,6 +172,8 @@ class DAS(object):
         self._timer = None
         self._ds = None
         self._last_datarec = []
+        self._ds2 = None
+        self.start_time = None
 
         # optional interfaces to other SVP abstraction layers/device drivers
         self.dc_measurement_device = None
@@ -205,7 +210,6 @@ class DAS(object):
             for p in self.sc_data_points:
                 self.data_points.append(p)
                 self.sc[p] = 0
-        # self.ts.log_debug('_init_sc_points datapoints = %s' % self.data_points)
 
         self._ds = dataset.Dataset(self.data_points, ts=self.ts)
 
@@ -253,6 +257,8 @@ class DAS(object):
         if enable is True:
             if self._capture is False:
                 self._ds = dataset.Dataset(self.data_points, ts=self.ts)
+                self._ds2 = pd.DataFrame()
+                self.start_time = None
                 self._last_datarec = []
                 if self.sample_interval > 0:
                     if self.sample_interval < MINIMUM_SAMPLE_PERIOD:
@@ -309,7 +315,17 @@ class DAS(object):
         Read the current data values directly from the DAS and place in the current dataset.
         """
         if self._capture is True:
+
             self._last_datarec = self.device_data_read()
+            if self.start_time is None:
+                self.start_time = [self.device.start_time]
+                self._ds2 = pd.DataFrame(np.column_stack(self._last_datarec[1:]), index=self.start_time,
+                                         columns=self.data_points[1:])
+                self.ts.run_conn.send({'name': self.ts.name, 'phases': self.ts.param_value('eut.phases')})
+            else:
+                self._ds2 = self._ds2.append(pd.Series(self._last_datarec[1:], index=self.data_points[1:],
+                                           name=self.device.current_time))
+            self.ts.run_conn.send(self._ds2.tail(1))
             self._ds.append(self._last_datarec)
         return self._last_datarec
 
