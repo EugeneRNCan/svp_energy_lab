@@ -31,8 +31,12 @@ Questions can be directed to support@sunspec.org
 """
 
 import os
-from . import device_das_sim
+from . import device_das_sim_random
+from . import device_das_sim_csv
+from . import dataset
 from . import das
+
+MINIMUM_SAMPLE_PERIOD = 50
 
 sim_info = {
     'name': os.path.splitext(os.path.basename(__file__))[0],
@@ -49,7 +53,8 @@ def params(info, group_name=None):
     info.param_add_value(gname('mode'), mode)
     info.param_group(gname(GROUP_NAME), label='%s Parameters' % mode,
                      active=gname('mode'),  active_value=mode)
-    info.param(pname('Sim_mode'), label='Simulation mode', default='Disabled', values=['Disabled', 'Random'])
+    info.param(pname('Sim_mode'), label='Simulation mode', default='Disabled', values=['Disabled', 'Random', 'csv'])
+    # Random mode parameters
     info.param(pname('sample_interval'), label='Sample Interval (ms)', default=1000, active=pname('Sim_mode'),
                active_value='Random')
     info.param(pname('chan_1'), label='Channel 1', default='AC', values=['AC', 'DC', 'Unused'],
@@ -64,6 +69,12 @@ def params(info, group_name=None):
                active=pname('Sim_mode'), active_value='Random')
     info.param(pname('chan_3_label'), label='Channel 3 Label', default='3', active=pname('chan_3'),
                active_value=['AC', 'DC'])
+    #csv mode parameters
+    info.param(pname('Base_data_folder_name'), label='Base data folder name', default='Results_dir',
+               active=pname('Sim_mode'), active_value=['csv'])
+    info.param(pname('use_rand_factors'), label='Use random factors', default='Disabled',
+               values=['Enabled', 'Disabled'], active=pname('Sim_mode'), active_value=['csv'])
+
 
 GROUP_NAME = 'sim'
 
@@ -80,8 +91,11 @@ class DAS(das.DAS):
         das.DAS.__init__(self, ts, group_name, points=points, sc_points=sc_points, support_interfaces=support_interfaces)
         # create channel info for each channel from parameters
         self.params['Sim_mode'] = self._param_value('Sim_mode')
-        self.params['sample_interval'] = self._param_value('sample_interval')
+        self.params['ts'] = self.ts
+
+        # Initialization of the Random simulation mode
         if self.params['Sim_mode'] == 'Random':
+            self.params['sample_interval'] = self._param_value('sample_interval')
             channels = [None]
             for i in range(1, 8):
                 chan_type = self._param_value('chan_%d' % (i))
@@ -103,16 +117,74 @@ class DAS(das.DAS):
             ts.log('Frequency = 67')
             ts.log('Power Factor = 0.12')
             ts.log('unassigned = 9991 (go to device_das_sim.py to add the missing measurement type)')
+
+            self.device = device_das_sim_random.Device(self.params)
+
+        # Initialization of the csv Simulation mode
+        elif self.params['Sim_mode'] == 'csv':
+            self.params['use_rand_factors'] = self._param_value('use_rand_factors')
+            self.params['Base_data_folder_name'] = self._param_value('Base_data_folder_name')
+            self.params['sample_interval'] = 50
+            self.device = device_das_sim_csv.Device(self.params)
+
         else:
             raise DASError('You need to select Random as the Simulation mode')
 
-        self.device = device_das_sim.Device(self.params)
+
         self.data_points = self.device.data_points
         # initialize soft channel points
         self._init_sc_points()
 
     def _param_value(self, name):
         return self.ts.param_value(self.group_name + '.' + GROUP_NAME + '.' + name)
+
+    def data_capture_read(self):
+        """
+        if in Random mode, returns the last data sample. If in csv mode, returns a list that comes from a pandas series
+        which is desired value.
+
+        :return: list which contains the last data sample from the data capture in expanded format
+        """
+
+        if self.params['Sim_mode'] == 'Random':
+            rec = []
+            if len(self._last_datarec) > 0:
+                rec = self._data_expand(self._last_datarec)
+            else:
+                rec = self.data_read()
+            return rec
+
+        elif self.params['Sim_mode'] == 'csv':
+            if self._capture is True:
+                last_datarec = self.device.data_read()
+                self._last_datarec = last_datarec.values.tolist()
+                self._ds.append(self._last_datarec)
+
+                if self.device.start_new_csv is True:
+                    self._ds.df = last_datarec.to_frame().T
+                    self.device.start_new_csv = False
+                else:
+                    self._ds.df = self._ds.df.append(last_datarec, ignore_index=True)
+            return self._data_expand(self._last_datarec)
+
+
+    def data_sample(self):
+        """
+        if in random mode, read the current data values directly from the DAS and place in the current dataset. If in
+        csv mode, skip the function since data_capture_read handles the refreshing of the pandas dataset.
+
+        :return: List which is the Last data sample
+        """
+        if self.params['Sim_mode'] == 'Random':
+            if self._capture is True:
+                self._last_datarec = self.device_data_read()
+                self._ds.append(self._last_datarec)
+
+        elif self.params['Sim_mode'] == 'csv':
+            if self._capture is True:
+               self._last_datarec = None
+
+        return self._last_datarec
 
 
 if __name__ == "__main__":

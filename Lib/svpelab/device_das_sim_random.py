@@ -29,11 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Questions can be directed to support@sunspec.org
 """
-
+import os
 import time
 import random
 import numpy as np
 import datetime
+import pandas as pd
 
 query_points = {
     'AC_VRMS': 'UTRMS',
@@ -49,17 +50,7 @@ query_points = {
     'DC_P': 'P'
 }
 
-initiale_average_values = {
-    'U': 120.00,
-    'I': 12.00,
-    'PF': 0.12,
-    'FCYC': 67.00,
-    'P': 12345.00,
-    'Q': 11111.00,
-    'S': 16609.00,
-    'INCA': 1.00,
-    'Unset': 9991.00
-}
+
 
 
 class DeviceError(Exception):
@@ -73,16 +64,17 @@ class Device(object):
 
     def __init__(self, params=None):
         self.params = params
-        self.channels = params.get('channels')
         self.sample_interval = params.get('sample_interval')
         self.data_points = ['TIME']
-        self.average = initiale_average_values
+        self.ts = params['ts']
+        self.initiale_average_values = self.get_initiale_average_values()
+        self.average = self.initiale_average_values
         # Connection object
         self.start_time = None
         self.current_time = None
         self.query_chan_str = ""
         item = 0
-
+        self.channels = params.get('channels')
         for i in range(1, 4):
             chan = self.channels[i]
             if chan is not None:
@@ -103,6 +95,27 @@ class Device(object):
                             point_str = '%s_%s' % (point_str, chan_label)
                         self.data_points.append(point_str)
 
+    def get_initiale_average_values(self):
+        # Rated powers
+        p_rated = self.ts.param_value('eut.p_rated')
+        var_rated = self.ts.param_value('eut.var_rated')
+        s_rated = self.ts.param_value('eut.s_rated')
+        # AC voltages
+        v_nom = self.ts.param_value('eut.v_nom')
+
+        initiale_average_values = {
+            'U': v_nom,
+            'I': 12.00,
+            'PF': 0.12,
+            'FCYC': 67.00,
+            'P': p_rated,
+            'Q': var_rated,
+            'S': s_rated,
+            'INCA': 1.00,
+            'Unset': 9991.00
+        }
+        return initiale_average_values
+
     def info(self):
         return 'DAS Simulator - 1.0'
 
@@ -113,7 +126,9 @@ class Device(object):
         pass
 
     def data_capture(self, enable=True):
+
         self.start_time = None
+        pass
 
     def data_read(self):
 
@@ -161,7 +176,7 @@ class Device(object):
                 self.average[key] += delta * 0.33*self.average[key]
             elif r > 0.8:
                 # attraction to the initial value
-                delta += (0.5 if initiale_average_values[key] > self.average[key] else -0.5)
+                delta += (0.5 if self.initiale_average_values[key] > self.average[key] else -0.5)
                 self.average[key] += delta*0.01*self.average[key]
             else:
                 self.average[key] += delta*0.01*self.average[key]

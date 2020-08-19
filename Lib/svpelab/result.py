@@ -323,7 +323,10 @@ class ResultWorkbook(object):
 
         chart.set_title({'name': title})
         chart.set_size({'width': 1200, 'height': 600})
-        chart.set_x_axis({'name': params.get('plot.x.title', '')})
+        if params.get('plot.x.axis.min', '') != 'Not congigured' and params.get('plot.x.axis.min', '') != '':
+            chart.set_x_axis({'name': params.get('plot.x.title', ''), 'min': params.get('plot.x.axis.min', '')})
+        else:
+            chart.set_x_axis({'name': params.get('plot.x.title', '')})
         chart.set_y_axis({'name': params.get('plot.y.title', '')})
         chart.set_y2_axis({'name': params.get('plot.y2.title', '')})
         chart.set_style(2)
@@ -367,7 +370,7 @@ class ResultWorkbook(object):
                     series = {
                         'name': name,
                         'categories': categories,
-                        'values': [ws_name, 2, col, count, col],
+                        'values': [ws_name, 1, col, count, col],
                         # 'line': {'color': line_color, 'width': 1.5},
                         'line': {'width': 1.5},
                         'marker': marker,
@@ -409,7 +412,7 @@ class ResultWorkbook(object):
                     chart.add_series({
                         'name': name,
                         'categories': categories,
-                        'values': [ws_name, 2, col, count, col],
+                        'values': [ws_name, 1, col, count, col],
                         # 'line': {'color': line_color, 'width': 1.5},
                         'line': {'width': 1.5},
                         'marker': marker,

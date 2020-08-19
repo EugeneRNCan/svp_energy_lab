@@ -564,9 +564,10 @@ class DataLogging:
                 self.ts.log('Waiting %s seconds to get the next Tr data for analysis...' %
                             time_to_sleep.total_seconds())
                 self.ts.sleep(time_to_sleep.total_seconds())
+            daq.sc['EVENT'] = "{0}_TR_{1}".format(self.current_step_label, tr_iter)
             daq.data_sample()  # sample new data
             data = daq.data_capture_read()  # Return dataset created from last data capture
-            daq.sc['EVENT'] = "{0}_TR_{1}".format(self.current_step_label, tr_iter)
+
 
             # update daq.sc values for Y_TARGET, Y_TARGET_MIN, and Y_TARGET_MAX
 
