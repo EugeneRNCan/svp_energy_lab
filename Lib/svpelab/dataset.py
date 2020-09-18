@@ -75,7 +75,7 @@ class Dataset(object):
         self.points = points                      # point names
         self.data = data                          # data
         self.ts = ts
-        self.df = {'data': pd.DataFrame, 'rand_factors': pd.DataFrame}
+        self.df = None
 
         if points is None:
             self.points = []
@@ -128,8 +128,16 @@ class Dataset(object):
             self.data.append([])
 
     def to_csv(self, filename):
+        """
+        Write result csv file based on the dataset. If the Simulation csv mode is used for the DAS, the csv is written
+        through a pandas dataset.
+
+        :param filename: String Path and name of the csv file to write
+
+        :return: nothing
+        """
         mode = self.ts.param_value('das.' + 'mode')
-        if mode != 'DAS Simulation':
+        if mode != 'DAS Simulation' or self.df is None:
             cols = list(range(len(self.data)))
             if len(cols) > 0:
                 f = open(filename, 'w')
@@ -145,15 +153,7 @@ class Dataset(object):
                     f.write('%s\n' % ', '.join(map(str, d)))
                 f.close()
         else:
-            self.df['data'].to_csv(filename, index=False)
-            a = '\\'
-            name_list = filename.split("\\")
-            name = ''
-            for i in range(len(name_list) - 1):
-                name += name_list[i] + '\\'
-            if os.path.isdir(name + 'Random_csv\\') is False:
-                os.makedirs(name + 'Random_csv')
-            self.df['rand_factors'].to_csv(name + 'Random_csv\\' + name_list[len(name_list) - 1], index=False)
+            self.df.to_csv(filename, index=False)
 
     def from_csv(self, filename, sep=','):
         self.clear()

@@ -1,9 +1,0 @@
-VV_1_PWR_100_vref_100.csv
-VV_1_PWR_100_vref_95.csv
-VV_1_PWR_100_vref_105.csv
-VV_1_PWR_66_vref_100.csv
-VV_1_PWR_66_vref_95.csv
-VV_1_PWR_66_vref_105.csv
-VV_1_PWR_20_vref_100.csv
-VV_1_PWR_20_vref_95.csv
-VV_1_PWR_20_vref_105.csv

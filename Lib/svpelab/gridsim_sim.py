@@ -57,4 +57,6 @@ GROUP_NAME = 'sim'
 class GridSim(gridsim.GridSim):
 
     def __init__(self, ts, group_name, params=None, support_interfaces=None):
+        if support_interfaces is None:
+            support_interfaces = {}
         gridsim.GridSim.__init__(self, ts, group_name, params, support_interfaces=support_interfaces)
