@@ -1,5 +1,5 @@
 """
-Copyright (c) 2017, Sandia National Labs and SunSpec Alliance
+Copyright (c) 2018, Sandia National Labs, SunSpec Alliance and CanmetENERGY(Natural Resources Canada)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -12,8 +12,8 @@ Redistributions in binary form must reproduce the above copyright notice, this
 list of conditions and the following disclaimer in the documentation and/or
 other materials provided with the distribution.
 
-Neither the names of the Sandia National Labs and SunSpec Alliance nor the names of its
-contributors may be used to endorse or promote products derived from
+Neither the names of the Sandia National Labs, SunSpec Alliance and CanmetENERGY(Natural Resources Canada)
+nor the names of its contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
@@ -28,24 +28,12 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Questions can be directed to support@sunspec.org
-
-Code to try:
-
-import pandas as pd
-import glob, os
-dir_path = r"D:\Results\SANDIA_VRT\"
-os.chdir(dir_path)
-for filename in glob.glob("**\*.csv",recursive=True):
-
-
 """
+
 import os
-import time
 import random
 import pandas as pd
 import glob
-
-
 
 
 class DeviceError(Exception):
@@ -62,35 +50,81 @@ class Device(object):
         self.sample_interval = params.get('sample_interval')
         self.data_points = ['TIME']
         self.ts = params['ts']
-        self.use_rand_factors = params['use_rand_factors']
-        self.Base_data_folder_name = params['Base_data_folder_name']
+
+        # Finding the standard used with the script and initiate the event suffix to find
+        f = open(self.ts.env['results_dir'].split('Results')[0] + 'Scripts\\' + self.ts.name, 'r')
+        lines = f.readlines()
+        for line in lines:
+            if 'pAus4777' in line:
+                self.Time_Event_suffix = 'T_COM'
+                break
+            elif 'p1547' in line:
+                self.Time_Event_suffix = 'TR'
+                break
+
+        self.use_rand_factors = params['use_rand_factors'] # option to have random data or not
+        self.Base_data_folder_name = params['Base_data_folder_name'] # Result folder name to replicate
         self.Base_data_directory = os.path.join(self.ts._results_dir.split('Results\\')[0] + 'Results',
-                                              self.Base_data_folder_name)
+                                              self.Base_data_folder_name) # Result folder path to replicate
+
+        # Find and ordering the different csv files needed
         self.data_files_name_order = []
         self.data_files_name = {}
         self.find_data_files_name()
+
+        # Ordering variables
         self.test = -1
         self.index = 0
+
+        # Initialisation of the first csv file into a pandas Dataframe
         self.df = pd.read_csv(os.path.join(self.Base_data_directory,
                                            self.data_files_name[self.data_files_name_order[0]].replace('\n', '')))
-        self.dfs = {'TR1': pd.DataFrame, 'TR2': pd.DataFrame, 'INIT': pd.DataFrame}
-        self.last_TR2 = pd.Series
-        self.start_new_csv = False
-        self.rand_factors_df = pd.DataFrame
+        self.dfs = {} # Dictionnary with the different Dataframe containing specific event related data
+        self.TR_names = [] # List of the specific events
+        self.start_new_csv = False # Indicator that a new csv need to be open, therefore overwrite the Dataframes
+        self.rand_factors_df = pd.DataFrame # Random factor Dataframe that is applied to initial Dataframe self.df
 
-        self.TR_turn = 0
-
+        # Initialising the sc points for the das
         for i in list(self.df.columns):
             if 'AC' in i:
                 self.data_points.append(i.strip())
-
-
 
         if self.Base_data_folder_name:
             self.ts.log(f'the base data folder used is {self.Base_data_folder_name}')
             pass
         else:
             raise DeviceError('No base data folder specified')
+
+    def dfs_initialization(self, event_col_name):
+        """
+                Function to know how many Time-response there is to report from the csv file and therefore the
+                appriopriate Dataframes.
+                :param event_col_name: string that represent the name of the event column used in self.df dataframe
+
+                :return: nothing
+        """
+
+        j = None
+        self.TR_names = []
+        self.dfs['INIT'] = self.df
+        for i in self.df[event_col_name]:
+            if self.Time_Event_suffix in i and j is None:
+                j = 0
+                self.TR_names.append(self.Time_Event_suffix + i.split(self.Time_Event_suffix)[-1])
+                self.dfs[self.TR_names[j]] = self.df[self.df[event_col_name].str.contains(self.TR_names[j], regex=True)]
+                self.dfs['INIT'] = pd.concat(
+                    [self.dfs['INIT'], self.dfs[self.TR_names[j]], self.dfs[self.TR_names[j]]]).drop_duplicates(
+                    keep=False)
+            elif self.Time_Event_suffix in i and self.Time_Event_suffix + i.split(self.Time_Event_suffix)[-1] not in self.TR_names:
+                self.TR_names.append(self.Time_Event_suffix + i.split(self.Time_Event_suffix)[-1])
+                j += 1
+                self.dfs[self.TR_names[j]] = self.df[self.df[event_col_name].str.contains(self.TR_names[j], regex=True)]
+                self.dfs['INIT'] = pd.concat(
+                    [self.dfs['INIT'], self.dfs[self.TR_names[j]], self.dfs[self.TR_names[j]]]).drop_duplicates(keep=False)
+
+
+
+
 
     def find_data_files_name(self):
         """
@@ -103,7 +137,6 @@ class Device(object):
             if file.endswith('.csv') and file.endswith('result_summary.csv') is False:
                 f = open(os.path.join(file), 'r')
                 lines = f.readlines()
-                print(f)
                 first_time = float(lines[1].split(',')[0])
                 self.data_files_name_order.append(first_time)
                 self.data_files_name[first_time] = file.split('/')[-1]
@@ -159,9 +192,8 @@ class Device(object):
     def new_csv_dfs(self):
         """
         Set the pandas Dataframes each time a new csv is accessed to produce new results.
-        self.dfs['TR1'] : Dataframe that contains the values for the first Time Response
-        self.dfs['TR2'] : Dataframe that contains the values for the second Time Response
-        self.dfs['INIT'] : Series that contains the first initial values of the csv file
+        self.dfs[self.Time_Event_suffix] : Dataframe that contains the values of a specific time event
+        self.dfs['INIT'] : Series that contains the first initial values of each step
         self.df: Dataframe of the entire csv file and then modified by self.rand_factors_df
         self.rand_factors_df : Dataframe full of random factors
         :return: nothing
@@ -178,20 +210,17 @@ class Device(object):
                 self.df[i] = self.df[i] * self.rand_factors_df[i]
         event_col_name = list(self.df.columns)[-1]
 
-        while 'TR_1' in self.df.iloc[0][event_col_name] or 'TR_2' in self.df.iloc[0][event_col_name]:
+        while self.Time_Event_suffix in self.df.iloc[0][event_col_name]:
             self.df = self.df[1:].reset_index(drop=True)
-        self.dfs['TR1'] = self.df[self.df[event_col_name].str.contains("TR_1", regex=True)]
-        self.dfs['TR2'] = self.df[self.df[event_col_name].str.contains("TR_2", regex=True)]
-        self.dfs['INIT'] = pd.concat([self.df, self.dfs['TR2'], self.dfs['TR2'], self.dfs['TR1'], self.dfs['TR1']])\
-            .drop_duplicates(keep=False)
+
+        self.dfs_initialization(event_col_name)
 
 
-        self.dfs['TR1'] = self.dfs['TR1'].drop_duplicates(subset=event_col_name, keep='first',
+        for TR_names in self.TR_names:
+            self.dfs[TR_names] = self.dfs[TR_names].drop_duplicates(subset=event_col_name, keep='first',
                                                           inplace=False).reset_index(drop=True)
-        self.dfs['TR1'] = self.dfs['TR1'].drop(columns=event_col_name)
-        self.dfs['TR2'] = self.dfs['TR2'].drop_duplicates(subset=event_col_name, keep='first',
-                                                          inplace=False).reset_index(drop=True)
-        self.dfs['TR2'] = self.dfs['TR2'].drop(columns=event_col_name)
+            self.dfs[TR_names] = self.dfs[TR_names].drop(columns=event_col_name)
+
         self.dfs['INIT'] = self.dfs['INIT'][self.dfs['INIT'][event_col_name].str.contains("Step", regex=True)]\
             .drop_duplicates(subset=event_col_name, keep='first', inplace=False).reset_index(drop=True)
 
@@ -216,19 +245,13 @@ class Device(object):
         :return: returns series corresponding on the type of data asked
         """
         data = pd.Series
-
-        if 'TR_2' in event:
-            data = self.dfs['TR2'].iloc[0]
-            self.dfs['TR2'] = self.dfs['TR2'][1:].reset_index(drop=True)
-
-        elif 'TR_1' in event:
-            data = self.dfs['TR1'].iloc[0]
-            self.dfs['TR1'] = self.dfs['TR1'][1:].reset_index(drop=True)
-
+        if self.Time_Event_suffix in event:
+            event_tr_name = self.Time_Event_suffix + event.split(self.Time_Event_suffix)[-1]
+            data = self.dfs[event_tr_name].iloc[0]
+            self.dfs[event_tr_name] = self.dfs[event_tr_name][1:].reset_index(drop=True)
         else:
             data = self.dfs['INIT'].iloc[0]
             self.dfs['INIT'] = self.dfs['INIT'][1:].reset_index(drop=True)
-            a = 0
 
         return data
 

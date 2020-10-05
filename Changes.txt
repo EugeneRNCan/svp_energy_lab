@@ -1,0 +1,18 @@
+Changed files in lib:
+- der_sim.py (Dc_measurement fct)
+- der.py (support_interfaces)
+- p1547.py (Event change code line at the wrong place)
+- das_sim.py (simulation mode)
+- device_das_sim.py (Needs to be removed)
+- device_das_sim_random.py (simulation mode in random submode)
+- device_das_sim_csv.py (simulation mode in csv submode)
+- dataset.py (Uses to_csv function of pandas for the Simulation mode)
+
+Changed files in 1547.1 scripts:
+- WV.py (Wrong curve in the script (no P0 in p1547.py))
+- Priorization.py (error in ActiveFunction.get_param call: 'aif' should be 'function')
+- LAP.py (error in record_timeresponse call: 'step_dict' is not supported)
+
+Changed files in Aus4777 scripts:
+- VW.py (error in pAus4777.ActiveFunction call: 'function' should be 'functions')
+- sirfn.png (returns an error if sirfn.png is not included in the Scripts folder)

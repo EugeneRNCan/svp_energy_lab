@@ -1,5 +1,5 @@
 """
-Copyright (c) 2017, Sandia National Labs and SunSpec Alliance
+Copyright (c) 2018, Sandia National Labs, SunSpec Alliance and CanmetENERGY(Natural Resources Canada)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -12,8 +12,8 @@ Redistributions in binary form must reproduce the above copyright notice, this
 list of conditions and the following disclaimer in the documentation and/or
 other materials provided with the distribution.
 
-Neither the names of the Sandia National Labs and SunSpec Alliance nor the names of its
-contributors may be used to endorse or promote products derived from
+Neither the names of the Sandia National Labs, SunSpec Alliance and CanmetENERGY(Natural Resources Canada)
+nor the names of its contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
@@ -69,11 +69,11 @@ class Device(object):
         self.ts = params['ts']
         self.initiale_average_values = self.get_initiale_average_values()
         self.average = self.initiale_average_values
-        # Connection object
         self.start_time = None
         self.current_time = None
         self.query_chan_str = ""
         item = 0
+        # Initialising the sc points for the das depending on the number of channel used
         self.channels = params.get('channels')
         for i in range(1, 4):
             chan = self.channels[i]
@@ -96,6 +96,12 @@ class Device(object):
                         self.data_points.append(point_str)
 
     def get_initiale_average_values(self):
+        """
+            Find the average corresponding value to be used in a random data algorythm
+            :param None
+
+            :return: initiale_average_values is a dictionnary of float values related to specific electrical data
+        """
         # Rated powers
         p_rated = self.ts.param_value('eut.p_rated')
         var_rated = self.ts.param_value('eut.var_rated')
@@ -105,9 +111,9 @@ class Device(object):
 
         initiale_average_values = {
             'U': v_nom,
-            'I': 12.00,
-            'PF': 0.12,
-            'FCYC': 67.00,
+            'I': s_rated/v_nom,
+            'PF': s_rated/p_rated,
+            'FCYC': 60.0,
             'P': p_rated,
             'Q': var_rated,
             'S': s_rated,
@@ -126,11 +132,23 @@ class Device(object):
         pass
 
     def data_capture(self, enable=True):
+        """
+        Indicate each time the daq needs to capture new data, which means the start time need to reinitialised
+        :param enable: Bool which indicates if the device can capture data or not
+
+        :return: nothing
+        """
 
         self.start_time = None
         pass
 
     def data_read(self):
+        """
+            Produce the random data queried
+            :param None
+
+            :return: data - a list containing the random data queried
+        """
 
         if self.start_time is None:
             self.start_time = np.datetime64(datetime.datetime.utcnow(), 'us')
@@ -161,6 +179,12 @@ class Device(object):
         return data
 
     def _gen_data(self, key):
+        """
+            A adapted random data generator
+            :param key: string that represent the type of data to generate
+
+            :return: self.average[key] - float which is a random data corresponding to the key type data
+        """
         delta = random.uniform(-0.5, 0.5)
         r = random.random()
 

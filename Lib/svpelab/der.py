@@ -52,7 +52,7 @@ def params(info, id=None, label='DER', group_name=None, active=None, active_valu
 DER_DEFAULT_ID = 'der'
 
 
-def der_init(ts, id=None, group_name=None):
+def der_init(ts, id=None, group_name=None, support_interfaces=None):
     """
     Function to create specific der implementation instances.
     """

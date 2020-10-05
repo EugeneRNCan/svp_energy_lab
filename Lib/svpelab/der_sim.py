@@ -132,3 +132,5 @@ class DER(der.DER):
 
         return params
 
+    def fixed_var(self, params=None):
+        pass
